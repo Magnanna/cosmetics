@@ -1,0 +1,630 @@
+<title>Kenfri POS Blueprint</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink-900: #1d1d1f;
+    --ink-600: #515154;
+    --ink-400: #86868b;
+    --ink-200: #d2d2d7;
+    --ink-100: #e8e8ed;
+    --ink-50: #fafafa;
+    --paper: #ffffff;
+    --brand: #5a2132;
+    --brand-deep: #5a2132;
+    --brand-ink: #ffffff;
+    --brand-ring: #5a2132;
+    --brand-tint: #f4e6ea;
+    --brand-wash: #faf3f5;
+    --good: #1f8a4c;
+    --warn: #b8860b;
+    --bad: #c0392b;
+    --radius: 12px;
+    --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.04);
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ink-50);
+    color: var(--ink-900);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 40px 80px;
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: 48px;
+  }
+  nav.toc {
+    position: sticky;
+    top: calc(env(safe-area-inset-top, 0px) + 24px);
+    align-self: start;
+    font-size: 13px;
+  }
+  nav.toc .label {
+    font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--ink-400); margin-bottom: 8px;
+  }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  nav.toc a {
+    display: block; padding: 5px 10px; border-radius: 6px; color: var(--ink-600); text-decoration: none;
+  }
+  nav.toc a:hover { background: var(--paper); color: var(--ink-900); }
+  nav.toc a:focus-visible, a:focus-visible { outline: 2px solid var(--brand-ring); outline-offset: 2px; }
+
+  main { min-width: 0; display: grid; gap: 56px; }
+  h1, h2, h3 { text-wrap: balance; margin: 0; letter-spacing: -0.02em; }
+  h1 { font-size: clamp(2rem, 4vw, 2.9rem); line-height: 1.08; font-weight: 700; }
+  h2 { font-size: 1.6rem; line-height: 1.2; font-weight: 650; }
+  h3 { font-size: 1.05rem; font-weight: 600; letter-spacing: -0.01em; }
+  p { margin: 0; max-width: 66ch; }
+  .muted { color: var(--ink-600); }
+  .eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--brand-deep);
+  }
+  .tnum { font-variant-numeric: tabular-nums; }
+  section { display: grid; gap: 20px; scroll-margin-top: 24px; }
+  .sec-head { display: grid; gap: 8px; }
+
+  /* Hero */
+  header.hero { display: grid; gap: 18px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--paper);
+    border: .5px solid var(--ink-200); color: var(--ink-600);
+  }
+  .chip.brand { background: var(--brand-tint); border-color: transparent; color: var(--brand-deep); font-weight: 600; }
+  .lede { font-size: 1.15rem; color: var(--ink-600); max-width: 60ch; }
+
+  .facts {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px;
+    background: var(--ink-100); border-radius: var(--radius); overflow: hidden; border: .5px solid var(--ink-100);
+  }
+  .fact { background: var(--paper); padding: 16px 18px; display: grid; gap: 2px; }
+  .fact b { font-size: 1.45rem; font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .fact span { font-size: 12.5px; color: var(--ink-400); }
+
+  /* Illustrations */
+  figure { margin: 0; display: grid; gap: 8px; }
+  figure img {
+    width: 100%; height: auto; display: block; border-radius: var(--radius);
+    background: #fff; border: .5px solid var(--ink-100);
+  }
+  figcaption { font-size: 12.5px; color: var(--ink-400); }
+
+  .split { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+  .card {
+    background: var(--paper); border-radius: var(--radius); box-shadow: var(--shadow);
+    border: .5px solid var(--ink-100); padding: 20px 22px; display: grid; gap: 12px;
+  }
+  ul.clean { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+  ul.clean li::marker { color: var(--brand-ring); }
+
+  /* Flow steps */
+  .flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; counter-reset: step; }
+  .step {
+    background: var(--paper); border: .5px solid var(--ink-100); border-radius: 10px; padding: 14px;
+    display: grid; gap: 4px; counter-increment: step; font-size: 13.5px;
+  }
+  .step::before {
+    content: counter(step); font-size: 11px; font-weight: 700; color: var(--brand-deep);
+    background: var(--brand-tint); width: 22px; height: 22px; border-radius: 50%;
+    display: grid; place-items: center;
+  }
+  .step strong { font-size: 14px; }
+  .step span { color: var(--ink-600); }
+
+  /* Till wireframe */
+  .till {
+    background: var(--paper); border-radius: 14px; border: .5px solid var(--ink-200); box-shadow: var(--shadow);
+    overflow: hidden; font-size: 12.5px;
+  }
+  .till-bar {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 10px 14px; border-bottom: .5px solid var(--ink-100); background: rgba(250,250,250,.8); color: var(--ink-600);
+  }
+  .till-bar .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--good); margin-right: 6px; }
+  .till-body { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); min-height: 300px; }
+  .till-left { padding: 14px; display: grid; gap: 10px; align-content: start; }
+  .search { border: .5px solid var(--ink-200); border-radius: 8px; padding: 8px 10px; color: var(--ink-400); background: var(--ink-50); }
+  .cats { display: flex; gap: 6px; flex-wrap: wrap; }
+  .cats span { padding: 3px 9px; border-radius: 999px; background: var(--ink-50); border: .5px solid var(--ink-100); color: var(--ink-600); }
+  .cats span.on { background: var(--brand-tint); color: var(--brand-deep); border-color: transparent; font-weight: 600; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+  .tile { border: .5px solid var(--ink-100); border-radius: 10px; padding: 8px; display: grid; gap: 4px; }
+  .sw { height: 34px; border-radius: 6px; }
+  .tile small { color: var(--ink-400); font-variant-numeric: tabular-nums; }
+  .till-right { border-left: .5px solid var(--ink-100); padding: 14px; display: grid; gap: 10px; align-content: start; background: #fcfcfd; }
+  .cust { background: var(--brand-wash); border-radius: 8px; padding: 9px 10px; display: grid; gap: 1px; }
+  .cust b { font-size: 13px; }
+  .line { display: flex; justify-content: space-between; gap: 8px; font-variant-numeric: tabular-nums; }
+  .line s { color: var(--ink-400); margin-right: 4px; }
+  .offer { color: var(--brand-deep); font-size: 11.5px; }
+  .total { border-top: .5px solid var(--ink-200); padding-top: 8px; display: flex; justify-content: space-between; align-items: baseline; }
+  .total b { font-size: 1.5rem; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .checkout { background: var(--brand); color: var(--brand-ink); text-align: center; border-radius: 8px; padding: 11px; font-weight: 600; font-size: 14px; }
+
+  /* Tables */
+  .tbl { overflow-x: auto; background: var(--paper); border-radius: var(--radius); border: .5px solid var(--ink-100); }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: .5px solid var(--ink-100); vertical-align: top; }
+  th { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-400); background: #fcfcfd; }
+  tr:last-child td { border-bottom: 0; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.dr { color: var(--ink-900); }
+  td.cr { color: var(--ink-600); }
+
+  /* Loyalty card */
+  .loyalty {
+    background: var(--brand); color: var(--brand-ink); border-radius: 16px; padding: 20px; display: grid; gap: 14px; max-width: 420px;
+  }
+  .loyalty .top { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+  .loyalty small { opacity: .8; font-size: 12px; }
+  .loyalty .pts { font-size: 1.7rem; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .loyalty .brandmark { font-weight: 800; letter-spacing: .02em; font-size: 15px; color: var(--brand-tint); }
+  .barcode {
+    background: #fff; border-radius: 10px; padding: 12px 14px 8px; display: grid; gap: 4px; justify-items: center;
+  }
+  .bars { height: 44px; width: 100%; background: repeating-linear-gradient(90deg, #1d1d1f 0 2px, #fff 2px 4px, #1d1d1f 4px 5px, #fff 5px 8px, #1d1d1f 8px 11px, #fff 11px 12px); }
+  .barcode span { color: var(--ink-900); font-size: 11px; font-variant-numeric: tabular-nums; letter-spacing: .08em; }
+
+  /* Pills */
+  .pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .p-v1 { background: var(--brand-tint); color: var(--brand-deep); }
+  .p-v15 { background: #eef1f6; color: #3b4a63; }
+  .p-v2 { background: var(--ink-50); color: var(--ink-600); border: .5px solid var(--ink-200); }
+  .p-take { background: #e7f4ec; color: var(--good); }
+  .p-adapt { background: #fbf3df; color: #8a6508; }
+  .p-drop { background: #f8e8e6; color: var(--bad); }
+
+  /* Swatches */
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .swatch { background: var(--paper); border: .5px solid var(--ink-100); border-radius: 10px; overflow: hidden; font-size: 12px; }
+  .swatch i { display: block; height: 52px; }
+  .swatch div { padding: 8px 10px; display: grid; }
+  .swatch code { color: var(--ink-400); font-size: 11.5px; }
+
+  /* Timeline */
+  .weeks { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+  .week { background: var(--paper); border: .5px solid var(--ink-100); border-radius: 10px; padding: 14px 16px; display: grid; gap: 6px; font-size: 13.5px; }
+  .week h3 { font-size: 14px; }
+  .week h3 em { font-style: normal; color: var(--brand); font-weight: 600; margin-right: 6px; }
+
+  .qs { display: grid; gap: 8px; counter-reset: q; }
+  .q { background: var(--paper); border: .5px solid var(--ink-100); border-radius: 10px; padding: 12px 14px; display: grid; grid-template-columns: auto 1fr; gap: 12px; font-size: 14px; counter-increment: q; }
+  .q::before { content: counter(q); font-weight: 700; color: var(--brand); font-variant-numeric: tabular-nums; }
+
+  .callout { background: var(--brand-wash); border-radius: 10px; padding: 14px 16px; font-size: 14px; color: var(--ink-600); max-width: 72ch; }
+  .callout b { color: var(--ink-900); }
+  footer { font-size: 12.5px; color: var(--ink-400); border-top: .5px solid var(--ink-200); padding-top: 16px; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: .9em; }
+
+  @media (max-width: 900px) {
+    .wrap { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-block: 24px 60px; padding-inline: 16px; }
+    nav.toc { position: static; }
+    nav.toc ol { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+    .split { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 620px) {
+    .till-body { grid-template-columns: minmax(0, 1fr); }
+    .till-right { border-left: 0; border-top: .5px solid var(--ink-100); }
+  }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+  html { scroll-behavior: smooth; }
+</style>
+
+<div class="wrap">
+  <nav class="toc" aria-label="Contents">
+    <div class="label">Contents</div>
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#ledger">One ledger</a></li>
+      <li><a href="#till">The till</a></li>
+      <li><a href="#stock">Stock in</a></li>
+      <li><a href="#customers">Customers &amp; loyalty</a></li>
+      <li><a href="#offers">Offers</a></li>
+      <li><a href="#returns">Returns</a></li>
+      <li><a href="#cashup">Cash-up</a></li>
+      <li><a href="#books">The books</a></li>
+      <li><a href="#grow">Built to grow</a></li>
+      <li><a href="#zeno">From Zeno</a></li>
+      <li><a href="#design">Design</a></li>
+      <li><a href="#plan">Plan</a></li>
+      <li><a href="#open">Open questions</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="hero" id="overview">
+      <div class="eyebrow">Project blueprint · v1.0 · 24 Sep 2026</div>
+      <h1>Kenfri POS</h1>
+      <p class="lede">A calm, beautiful till for Kenfri Cosmetics with a full set of books behind it. Every sale, return and shilling that moves is recorded automatically, so the owner always knows what she sold, what she earned, and what she owes.</p>
+      <div class="meta">
+        <span class="chip brand">Kenfri Cosmetics</span>
+        <span class="chip">1 shop · 1 till</span>
+        <span class="chip">Kenya · KES</span>
+        <span class="chip">Turnover Tax, no VAT</span>
+        <span class="chip">Desktop app</span>
+        <span class="chip">Draft for review</span>
+      </div>
+      <div class="facts">
+        <div class="fact"><b>~4 weeks</b><span>to a working v1</span></div>
+        <div class="fact"><b>KES 30–50k</b><span>peak daily sales</span></div>
+        <div class="fact"><b>4 roles</b><span>owner · accountant · staff · cashier</span></div>
+        <div class="fact"><b>&lt; 30 s</b><span>target for a 3-item sale</span></div>
+        <div class="fact"><b>1.5%</b><span>Turnover Tax on sales</span></div>
+      </div>
+    </header>
+
+    <section id="ledger">
+      <div class="sec-head">
+        <div class="eyebrow">The big idea</div>
+        <h2>Everything lands in one book</h2>
+      </div>
+      <figure>
+        <img src="img/01-one-ledger.png" alt="Xiaohei stamping sale, return and cash-up slips into one big ledger book that balances on a scale" width="1344" height="752">
+        <figcaption>Sales, returns and cash-ups all post to one double-entry ledger in real time.</figcaption>
+      </figure>
+      <div class="split">
+        <p class="muted">The till is a friendly front end on a strict accounting engine. When the cashier completes a sale, the system records the money in, the stock out and its cost, and any loyalty points earned, all in one step. Reports read that ledger directly, so the P&amp;L, Balance Sheet and stock value always agree with each other. This is the engine proven in Zeno, reused here.</p>
+        <div class="card">
+          <h3>What that means for the owner</h3>
+          <ul class="clean">
+            <li>No separate accounting package, and no end-of-month data entry</li>
+            <li>Profit, cash and stock value are always current</li>
+            <li>Mistakes get corrected with a reversal, never deleted, so there's a full trail</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="till">
+      <div class="sec-head">
+        <div class="eyebrow">Selling</div>
+        <h2>The till: scan, attach a phone, pay, done</h2>
+      </div>
+      <figure>
+        <img src="img/02-phone-key.png" alt="Xiaohei pushing a key shaped like a phone number into a padlocked till; a receipt, SMS and points jar come out" width="1344" height="752">
+        <figcaption>A phone number is required on every sale. It unlocks the receipt, the SMS and the loyalty points.</figcaption>
+      </figure>
+      <div class="flow">
+        <div class="step"><strong>Scan or tap</strong><span>Barcode, search, or a quick tile. Shades show as swatches.</span></div>
+        <div class="step"><strong>Attach customer</strong><span>Phone number (required). Retail or wholesale pricing follows the customer.</span></div>
+        <div class="step"><strong>Offers apply</strong><span>Live promotions price themselves. Cashier discounts up to KES 500.</span></div>
+        <div class="step"><strong>Take payment</strong><span>Cash, M-Pesa Till (code typed), credit account, points, or a mix.</span></div>
+        <div class="step"><strong>Receipt</strong><span>80mm print, drawer opens, SMS receipt with points balance.</span></div>
+      </div>
+      <div class="till" role="img" aria-label="Sketch of the till screen: product grid on the left, cart with customer and checkout on the right">
+        <div class="till-bar">
+          <span><span class="dot"></span>Online · Shift open · Wanjiru</span>
+          <span>2 parked · More</span>
+        </div>
+        <div class="till-body">
+          <div class="till-left">
+            <div class="search">Search name, brand, shade or scan…</div>
+            <div class="cats"><span class="on">Hair</span><span>Skin care</span><span>Makeup</span><span>Nails</span><span>Perfumes</span></div>
+            <div class="tiles">
+              <div class="tile"><i class="sw" style="background:#c89b7b"></i>Foundation<small>6 shades</small></div>
+              <div class="tile"><i class="sw" style="background:#3a2a24"></i>Hair colour<small>8 shades</small></div>
+              <div class="tile"><i class="sw" style="background:#efe7df"></i>Leave-in 40g<small>KES 50</small></div>
+              <div class="tile"><i class="sw" style="background:#e9d6c6"></i>Relaxer twin<small>KES 120</small></div>
+              <div class="tile"><i class="sw" style="background:#b4585a"></i>Lipstick<small>12 shades</small></div>
+              <div class="tile"><i class="sw" style="background:#dfe6ea"></i>Shampoo 40g<small>KES 40</small></div>
+            </div>
+          </div>
+          <div class="till-right">
+            <div class="cust"><b>Fridah M. · 0714 ••• 287</b><span class="muted">Retail · 1,447 pts · KES 144.70</span></div>
+            <div class="line"><span>Foundation · Caramel</span><span>1,200</span></div>
+            <div class="line"><span>Leave-in 40g × 2</span><span>100</span></div>
+            <div class="line"><span>Lipstick · Berry</span><span><s>650</s>520</span></div>
+            <div class="offer">Weekend Lips −20% applied</div>
+            <div class="total"><span class="muted">Total KES</span><b>1,820.00</b></div>
+            <div class="checkout">Checkout</div>
+          </div>
+        </div>
+      </div>
+      <p class="muted" style="font-size:13px">Layout borrowed from Shopify POS: the product grid on the left and the cart on the right, with the customer shown at the top. Keyboard shortcuts: F2 search, F4 customer, F8 park, F12 checkout. The names and prices in this sketch are examples only.</p>
+    </section>
+
+    <section id="stock">
+      <div class="sec-head">
+        <div class="eyebrow">Stock in</div>
+        <h2>Supplier VAT stays in the cost</h2>
+      </div>
+      <p class="muted">Kenfri isn't VAT registered, so it can't claim back the VAT it pays suppliers; the full VAT-inclusive amount is what stock costs. Lush prints VAT-inclusive rates: the lines add up to 6,960 and the 960 VAT is backed out of that total, so the leave-in costs exactly KES 25.00. Other suppliers add VAT on top of a net rate, so every bill has a "rates include VAT" switch.</p>
+      <div class="split">
+        <div class="tbl">
+          <table>
+            <thead><tr><th>Lush Hair invoice line</th><th>Qty</th><th>Rate (incl. VAT)</th><th>Unit cost</th></tr></thead>
+            <tbody>
+              <tr><td>Leave-in treatment 40g</td><td class="num">48</td><td class="num">25.00</td><td class="num"><b>25.00</b></td></tr>
+              <tr><td>Metholated shampoo 40g</td><td class="num">48</td><td class="num">20.00</td><td class="num"><b>20.00</b></td></tr>
+              <tr><td>Combo pack 35g</td><td class="num">48</td><td class="num">35.00</td><td class="num"><b>35.00</b></td></tr>
+              <tr><td>No-lye relaxer twin pack 45g</td><td class="num">48</td><td class="num">65.00</td><td class="num"><b>65.00</b></td></tr>
+              <tr><td><b>Payable to supplier</b></td><td class="num">192</td><td class="num">incl. 960 VAT</td><td class="num"><b>6,960.00</b></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Receiving a supplier invoice</h3>
+          <ul class="clean">
+            <li>Each product remembers the supplier's item code and carton size, so typing <code>FGWHDLIT01-40</code> finds it</li>
+            <li>Stock is costed first-in, first-out (FIFO), so margins are accurate</li>
+            <li>What we owe the supplier is tracked until it's paid</li>
+            <li>Barcodes: scan the manufacturer's, or generate an in-store one if there isn't one</li>
+            <li>Weekly stock take by scanning; the owner approves differences</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="customers">
+      <div class="sec-head">
+        <div class="eyebrow">Customers</div>
+        <h2>Loyalty, credit and knowing who buys what</h2>
+      </div>
+      <div class="split">
+        <div class="card">
+          <h3>Loyalty points (modelled on Carrefour MyCLUB)</h3>
+          <ul class="clean">
+            <li><b>1 point = KES 0.10</b>; earn rate to be confirmed (draft: 1 point per KES 10 spent)</li>
+            <li>Points can be redeemed once they're worth KES 100 (1,000 points)</li>
+            <li>Wholesale customers don't earn points unless the owner switches it on for them</li>
+            <li>Points are recorded as money owed to customers until they're spent</li>
+          </ul>
+          <h3>Credit accounts</h3>
+          <ul class="clean">
+            <li>Available to salons, wholesale and retail customers, each with a credit limit</li>
+            <li>Statements, aging and SMS reminders</li>
+            <li>The system suggests limits from each customer's buying history; the owner approves them (v1.5)</li>
+          </ul>
+        </div>
+        <div style="display:grid;gap:12px">
+          <div class="loyalty" aria-label="Example Kenfri loyalty balance card">
+            <div class="top">
+              <div><small>Current balance</small><div class="pts">1,447.91 Points</div><small>KES 144.79</small></div>
+              <div class="brandmark">KENFRI</div>
+            </div>
+            <div class="barcode"><div class="bars"></div><span>2547 1473 3287</span></div>
+          </div>
+          <p class="muted" style="font-size:13px">A digital loyalty card like this is planned for v2. In v1 the phone number is the membership, and the balance comes on every SMS receipt.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="offers">
+      <div class="sec-head">
+        <div class="eyebrow">Promotions</div>
+        <h2>Offers you post like announcements</h2>
+      </div>
+      <figure>
+        <img src="img/04-offers-clothesline.png" alt="Xiaohei on a clothesline between start and end clocks, pegging 20% off and +1000 pts tags onto products walking underneath" width="1344" height="752">
+        <figcaption>Pick the products, set a start and end time, and the till applies the offer by itself. With no offers running, normal prices apply.</figcaption>
+      </figure>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>Offer type</th><th>Example</th><th>Targets</th></tr></thead>
+          <tbody>
+            <tr><td>Price off</td><td>20% off all Lush Hair, Fri–Sun</td><td>Products, brands, categories</td></tr>
+            <tr><td>Fixed price</td><td>Relaxer twin pack at KES 99</td><td>Specific products</td></tr>
+            <tr><td>Bonus points</td><td>+1,000 points on KES 1,000+ spent on hair care</td><td>Categories, brands</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="returns">
+      <div class="sec-head">
+        <div class="eyebrow">Returns</div>
+        <h2>24 hours, unopened only</h2>
+      </div>
+      <div class="split">
+        <figure>
+          <img src="img/05-returns-gate.png" alt="Xiaohei guarding a gate under a 24-hour hourglass; an unopened hair colour box is exchanged, an opened jar bounced back" width="1344" height="752">
+          <figcaption>A wrong hair colour in a sealed box can be exchanged. An opened jar can't come back.</figcaption>
+        </figure>
+        <div class="card">
+          <h3>Rules the till enforces</h3>
+          <ul class="clean">
+            <li>Returns only with the original receipt</li>
+            <li>Within 24 hours of the sale; after that, the owner's PIN is needed</li>
+            <li>The cashier confirms each item is unopened</li>
+            <li>Exchange is the default. Cash refunds need the owner's PIN</li>
+            <li>Returned stock goes back on the shelf; points from the sale are taken back</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="cashup">
+      <div class="sec-head">
+        <div class="eyebrow">End of day</div>
+        <h2>Blind cash-up</h2>
+      </div>
+      <figure>
+        <img src="img/06-blind-cashup.png" alt="Blindfolded Xiaohei counting cash into a drawer while another holds the sealed expected amount; a scale shows the variance" width="1344" height="752">
+        <figcaption>The cashier counts the drawer without seeing the expected amount. Any difference is recorded as over or short.</figcaption>
+      </figure>
+      <div class="flow">
+        <div class="step"><strong>Open shift</strong><span>Enter the starting float.</span></div>
+        <div class="step"><strong>During the day</strong><span>Cash in/out with a reason. X-report any time.</span></div>
+        <div class="step"><strong>Count</strong><span>By denomination, blind.</span></div>
+        <div class="step"><strong>Z-report</strong><span>Variance is posted, the shift is locked, and the owner gets an SMS.</span></div>
+        <div class="step"><strong>M-Pesa check</strong><span>Import the till statement; every typed code is matched against it.</span></div>
+      </div>
+    </section>
+
+    <section id="books">
+      <div class="sec-head">
+        <div class="eyebrow">Accounting</div>
+        <h2>What each action writes to the books</h2>
+        <p class="muted">Every row is one automatic journal entry, with debits and credits always equal.</p>
+      </div>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>When this happens</th><th>Debit</th><th>Credit</th></tr></thead>
+          <tbody>
+            <tr><td>Stock received from supplier</td><td class="dr">Inventory (incl. VAT)</td><td class="cr">Accounts Payable</td></tr>
+            <tr><td>Cash / M-Pesa / credit sale</td><td class="dr">Cash Drawer / M-Pesa Till / Receivables</td><td class="cr">Sales</td></tr>
+            <tr><td>Cost of every sale</td><td class="dr">Cost of Goods Sold</td><td class="cr">Inventory (FIFO)</td></tr>
+            <tr><td>Points earned</td><td class="dr">Loyalty Expense</td><td class="cr">Loyalty Liability</td></tr>
+            <tr><td>Paid with points</td><td class="dr">Loyalty Liability</td><td class="cr">Sales</td></tr>
+            <tr><td>Return / refund</td><td class="dr">Sales Returns · Inventory</td><td class="cr">Tender · COGS</td></tr>
+            <tr><td>Petty cash out</td><td class="dr">Expense</td><td class="cr">Cash Drawer</td></tr>
+            <tr><td>Drawer short at cash-up</td><td class="dr">Cash Over/Short</td><td class="cr">Cash Drawer</td></tr>
+            <tr><td>Stock take shortfall</td><td class="dr">Stock Loss</td><td class="cr">Inventory</td></tr>
+            <tr><td>Monthly Turnover Tax</td><td class="dr">TOT Expense</td><td class="cr">TOT Payable</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="split">
+        <div class="card">
+          <h3>Financial reports</h3>
+          <p class="muted">P&amp;L · Balance Sheet · Trial Balance · Cash Flow · General Ledger · Receivables &amp; Payables aging · Turnover Tax</p>
+        </div>
+        <div class="card">
+          <h3>Shop reports</h3>
+          <p class="muted">Sales by hour, cashier, brand, category and shade · Margin by brand · Discounts · Returns · Cash variances · Stock value · Dead stock · Shrinkage · Loyalty liability · Top customers</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="grow">
+      <div class="sec-head">
+        <div class="eyebrow">Architecture</div>
+        <h2>One shop today, room for more</h2>
+      </div>
+      <figure>
+        <img src="img/07-org-cabinet.png" alt="Xiaohei on a ladder tagging the Kenfri drawer of a filing cabinet; other drawers wait for the next shop; a dotted arrow leads to an online store bag" width="1344" height="752">
+        <figcaption>Every record carries an organisation ID. Other cosmetics shops can be added later, and each sees only its own data.</figcaption>
+      </figure>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>Layer</th><th>Choice</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>App</td><td>Next.js 15 · React 19 · TypeScript</td><td>Same stack as Zeno, so modules port directly</td></tr>
+            <tr><td>Data</td><td>Supabase Postgres · Drizzle · Row-Level Security</td><td>Each shop's data is isolated at the database level</td></tr>
+            <tr><td>Desktop</td><td>Tauri 2 shell</td><td>USB printing to the XP-Q80, cash drawer, scanner</td></tr>
+            <tr><td>SMS</td><td>Africa's Talking</td><td>Already integrated in Zeno</td></tr>
+            <tr><td>Online store (later)</td><td>Each sale tagged with its sales channel; stock tracked per location</td><td>Adding a web shop won't need a rewrite</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><b>No offline mode.</b> The shop has stable internet. If the connection drops, the till says so and keeps the cart. A sale is saved only once the server confirms it, and it can never be recorded twice.</div>
+    </section>
+
+    <section id="zeno">
+      <div class="sec-head">
+        <div class="eyebrow">Reuse</div>
+        <h2>What we take from Zeno</h2>
+        <p class="muted">We start from a fresh codebase and copy in the tested modules.</p>
+      </div>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>Module</th><th>Decision</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>Posting engine, ledger, integrity checks</td><td><span class="pill p-take">Take</span></td><td>The core that keeps the books correct</td></tr>
+            <tr><td>FIFO inventory, money, reports, period lock</td><td><span class="pill p-take">Take</span></td><td>P&amp;L, Balance Sheet, Trial Balance, aging</td></tr>
+            <tr><td>Roles &amp; permissions, audit log, SMS</td><td><span class="pill p-take">Take</span></td><td>Add a till PIN per user</td></tr>
+            <tr><td>M-Pesa till reconciliation</td><td><span class="pill p-take">Take</span></td><td>Matches typed codes against the statement</td></tr>
+            <tr><td>Payroll, loans, optional clock-in</td><td><span class="pill p-take">Take</span></td><td>v1.5; clock-in off by default</td></tr>
+            <tr><td>Items → products with shades &amp; sizes</td><td><span class="pill p-adapt">Adapt</span></td><td>Variants, barcodes, supplier codes, two price levels</td></tr>
+            <tr><td>Contacts → customers</td><td><span class="pill p-adapt">Adapt</span></td><td>Phone-first, loyalty, credit, buying profile</td></tr>
+            <tr><td>Announcements → offers engine</td><td><span class="pill p-adapt">Adapt</span></td><td>Same scheduling pattern, applied to prices and points</td></tr>
+            <tr><td>Tax engine (VAT)</td><td><span class="pill p-adapt">Adapt</span></td><td>Kept but switched off; Turnover Tax on</td></tr>
+            <tr><td>Pipeline, quotes, client portal, recurring invoices</td><td><span class="pill p-drop">Drop</span></td><td>Not needed in a shop</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="design">
+      <div class="sec-head">
+        <div class="eyebrow">Look &amp; feel</div>
+        <h2>Zeno's calm, in Masterpiece red</h2>
+        <p class="muted">Zeno's Apple-style tokens are kept as they are: hairline borders, 12px cards and big tabular numbers for money. Only the accent changes, to Masterpiece red, a deep wine, on a softer SaaS-white canvas. Text on the accent is white. Light mode only.</p>
+      </div>
+      <div class="swatches">
+        <div class="swatch"><i style="background:#5a2132"></i><div><b>Brand</b><code>#5A2132</code></div></div>
+        <div class="swatch"><i style="background:#f4e6ea"></i><div><b>Brand tint</b><code>#F4E6EA</code></div></div>
+        <div class="swatch"><i style="background:#1d1d1f"></i><div><b>Ink 900</b><code>#1D1D1F</code></div></div>
+        <div class="swatch"><i style="background:#86868b"></i><div><b>Ink 400</b><code>#86868B</code></div></div>
+        <div class="swatch"><i style="background:#fafafa"></i><div><b>Canvas</b><code>#FAFAFA</code></div></div>
+        <div class="swatch"><i style="background:#1f8a4c"></i><div><b>Good</b><code>#1F8A4C</code></div></div>
+        <div class="swatch"><i style="background:#b8860b"></i><div><b>Warn</b><code>#B8860B</code></div></div>
+        <div class="swatch"><i style="background:#c0392b"></i><div><b>Bad</b><code>#C0392B</code></div></div>
+      </div>
+      <p class="muted" style="font-size:13px">Rule from Zeno: the brand colour is only for primary buttons, active states and links. Red, amber and green only ever mean money or stock status.</p>
+    </section>
+
+    <section id="plan">
+      <div class="sec-head">
+        <div class="eyebrow">Delivery</div>
+        <h2>Four weeks to v1</h2>
+      </div>
+      <div class="weeks">
+        <div class="week"><h3><em>Week 1</em>Foundations</h3><span class="muted">Repo, organisation setup and data isolation, logins &amp; roles, design tokens, ledger + FIFO ported with tests, product catalogue, CSV import</span></div>
+        <div class="week"><h3><em>Week 2</em>Stock &amp; till</h3><span class="muted">Suppliers, receiving, stock take; Tauri shell, scanning, customer attach, checkout, receipt &amp; drawer</span></div>
+        <div class="week"><h3><em>Week 3</em>Shop rules</h3><span class="muted">Shifts &amp; blind cash-up, returns &amp; exchanges, discounts + PIN, loyalty, offers, SMS, credit accounts</span></div>
+        <div class="week"><h3><em>Week 4</em>Books &amp; launch</h3><span class="muted">Dashboard, reports, Turnover Tax, M-Pesa reconcile, expenses, period lock, real catalogue load, testing in the shop</span></div>
+      </div>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>Release</th><th>What's in it</th></tr></thead>
+          <tbody>
+            <tr><td><span class="pill p-v1">v1</span></td><td>Everything above: till, stock, customers, loyalty, offers, credit, SMS receipts, shifts, full books, reports</td></tr>
+            <tr><td><span class="pill p-v15">v1.5</span></td><td>Payroll, optional clock-in, marketing SMS automations, discount approval by phone, suggested credit limits, purchase orders, label printing</td></tr>
+            <tr><td><span class="pill p-v2">v2</span></td><td>Online store, digital loyalty card, more tills &amp; branches, onboarding other shops, VAT/eTIMS switch, M-Pesa STK push</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="split">
+        <div class="card">
+          <h3>Roles</h3>
+          <div class="tbl" style="border:0">
+            <table>
+              <tbody>
+                <tr><td><b>Owner</b></td><td>Everything. Approves big discounts, price changes, refunds, credit limits.</td></tr>
+                <tr><td><b>Accountant</b></td><td>Books, expenses, reports, Turnover Tax. No till.</td></tr>
+                <tr><td><b>Staff</b></td><td>Receive stock, stock take, add products, suggest prices.</td></tr>
+                <tr><td><b>Cashier</b></td><td>Sell, return, cash-up, discounts up to KES 500. Can't see costs.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Not in v1</h3>
+          <ul class="clean">
+            <li>VAT, eTIMS, offline selling, STK push</li>
+            <li>Expiry or batch tracking, testers, consignment</li>
+            <li>Customer display, dark mode</li>
+            <li>Gift cards, layaway, stacked promotions</li>
+            <li>Online store (planned for, not built)</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="open">
+      <div class="sec-head">
+        <div class="eyebrow">To confirm with the owner</div>
+        <h2>Open questions</h2>
+      </div>
+      <div class="qs">
+        <div class="q">Loyalty earn rate: how many points per KES spent? (Draft: 1 point per KES 10.)</div>
+        <div class="q">Does the "KES 100 minimum" mean the minimum to redeem points, or the minimum purchase to earn them?</div>
+        <div class="q">Do points expire? Do credit sales earn points before they're paid?</div>
+        <div class="q">Variant structure: waiting on the larger supplier invoice (shades and sizes).</div>
+        <div class="q">Opening balances at go-live: cash, M-Pesa, supplier debts, customer credit.</div>
+        <div class="q">SMS sender ID "KENFRI" needs Africa's Talking registration, which takes days. Start early.</div>
+      </div>
+    </section>
+
+    <footer>Full detail (60+ user stories, functional requirements, data model): <code>Salon/tasks/prd-kenfri-pos.md</code>. Illustrations drawn in the Ian Xiaohei style.</footer>
+  </main>
+</div>

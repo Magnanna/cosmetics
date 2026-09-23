@@ -1,0 +1,1 @@
+ALTER TABLE "orgs" ALTER COLUMN "brand_color" SET DEFAULT '#B5566F';
