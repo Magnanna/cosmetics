@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { completeSale, lookupCustomer, quickCreateCustomer, startShift, type TillCustomer } from "./actions";
+import { MoreMenu, PinPrompt, type ExchangeCredit } from "./till-dialogs";
+import { applyOffers, type OfferDef } from "@/lib/offers";
+import { fmtPoints } from "@/lib/loyalty";
 import { choosePrinter, inDesktopApp, listPrinters, openDrawer, printReceipt, printTestPage } from "@/lib/print-client";
 import { parseKES } from "@/lib/money";
 import { normalizeKenyanPhone } from "@/lib/phone";
@@ -22,8 +25,11 @@ export interface TillProduct {
   id: number;
   name: string;
   brand: string | null;
+  brandId: number | null;
   imageUrl: string | null;
   topCategoryId: number | null;
+  /** The product's category and its parent, for offers. */
+  categoryIds: number[];
   optionNames: string[];
   variants: TillVariant[];
 }
@@ -36,7 +42,7 @@ interface CartLine {
   discountCents: number;
 }
 
-type Tender = { method: "cash" | "mpesa" | "credit"; amountCents: number; tenderedCents?: number; mpesaCode?: string };
+type Tender = { method: "cash" | "mpesa" | "credit" | "points" | "exchange"; amountCents: number; tenderedCents?: number; mpesaCode?: string; returnId?: number };
 
 const kes = (c: number) => `${c < 0 ? "-" : ""}${Math.floor(Math.abs(c) / 100).toLocaleString("en-KE")}.${String(Math.abs(c) % 100).padStart(2, "0")}`;
 
@@ -50,6 +56,8 @@ export function TillApp(props: {
   discountLimitCents: number;
   products: TillProduct[];
   categories: { id: number; name: string }[];
+  offers: OfferDef[];
+  expenseAccounts: { code: string; name: string }[];
 }) {
   const [shiftOpen, setShiftOpen] = useState(props.shiftOpen);
   const [online, setOnline] = useState(true);
@@ -59,8 +67,16 @@ export function TillApp(props: {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customer, setCustomer] = useState<TillCustomer | null>(null);
   const [cartDiscountCents, setCartDiscountCents] = useState(0);
+  /** Owner PIN typed to approve a discount above the cashier limit (checked again on the server). */
+  const [ownerPin, setOwnerPin] = useState<string | null>(null);
+  const [exchange, setExchange] = useState<ExchangeCredit | null>(null);
+  const [clock, setClock] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setClock(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
   const [paying, setPaying] = useState(false);
-  const [done, setDone] = useState<{ receiptNo: string; receiptToken: string; changeCents: number; totalCents: number } | null>(null);
+  const [done, setDone] = useState<{ receiptNo: string; receiptToken: string; changeCents: number; totalCents: number; pointsEarned: number; pointsBalance: number | null } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const phoneRef = useRef<HTMLInputElement>(null);
@@ -166,20 +182,34 @@ export function TillApp(props: {
     });
   }, [props.products, query, category]);
 
-  const lines = cart.map((l) => {
+  // Same offers engine as the server, so the price on screen is the price charged.
+  const offerResult = applyOffers(
+    cart.map((l) => {
+      const { product, variant } = variantIndex.byId.get(l.variantId)!;
+      return { variantId: variant.id, productId: product.id, brandId: product.brandId, categoryIds: product.categoryIds, unitCents: priceOf(variant), qty: l.qty };
+    }),
+    props.offers,
+    wholesale ? "wholesale" : "retail",
+    clock
+  );
+  const lines = cart.map((l, i) => {
     const entry = variantIndex.byId.get(l.variantId)!;
     const unit = priceOf(entry.variant);
-    return { ...l, unit, gross: unit * l.qty, net: unit * l.qty - l.discountCents };
+    const promo = offerResult.lines[i].promoDiscountCents;
+    return { ...l, unit, gross: unit * l.qty, promo, offerTitle: offerResult.lines[i].offerTitle, net: unit * l.qty - promo - l.discountCents };
   });
   const grossCents = lines.reduce((s, l) => s + l.gross, 0);
+  const promoCents = lines.reduce((s, l) => s + l.promo, 0);
   const lineDiscounts = lines.reduce((s, l) => s + l.discountCents, 0);
-  const totalCents = grossCents - lineDiscounts - cartDiscountCents;
+  const totalCents = grossCents - promoCents - lineDiscounts - cartDiscountCents;
   const units = lines.reduce((s, l) => s + l.qty, 0);
 
   function resetSale() {
     setCart([]);
     setCustomer(null);
     setCartDiscountCents(0);
+    setOwnerPin(null);
+    setExchange(null);
     setDone(null);
     setQuery("");
     searchRef.current?.focus();
@@ -205,6 +235,16 @@ export function TillApp(props: {
             <span className={`w-2 h-2 rounded-full ${online ? "bg-good" : "bg-bad"}`} />
             {online ? "Online" : "Offline — sales can't be saved"}
           </span>
+          <MoreMenu
+            registerId={props.registerId}
+            role={props.role}
+            customer={customer}
+            expenseAccounts={props.expenseAccounts}
+            onMessage={setToast}
+            onCustomerChanged={setCustomer}
+            onShiftClosed={() => { resetSale(); setShiftOpen(false); }}
+            onExchange={(credit, c) => { resetSale(); setCustomer(c); setExchange(credit); setToast(`Exchange credit KES ${kes(credit.creditLeftCents)} ready — add the new items.`); }}
+          />
           <PrinterMenu shopName={props.shopName} onMessage={setToast} />
           <span className="hidden sm:inline">{props.cashierName}</span>
           {props.role !== "cashier" && <Link href="/" className="text-brand-700 underline">Back office</Link>}
@@ -274,7 +314,13 @@ export function TillApp(props: {
 
         {/* Cart */}
         <aside className="min-h-0 flex flex-col bg-white border-l-[0.5px] border-ink-100">
-          <CustomerSlot customer={customer} onChange={setCustomer} phoneRef={phoneRef} />
+          <CustomerSlot customer={customer} onChange={(c) => { setCustomer(c); if (!c || c.id !== exchange?.customerId) setExchange(null); }} phoneRef={phoneRef} />
+          {exchange && (
+            <div className="mx-4 mb-2 rounded-lg bg-ink-50 px-3 py-2 text-[12.5px] flex justify-between">
+              <span>Exchange credit from {exchange.returnNo}</span>
+              <span className="tnum font-semibold">KES {kes(exchange.creditLeftCents)}</span>
+            </div>
+          )}
           <div className="flex-1 min-h-0 overflow-y-auto px-4">
             {lines.length === 0 ? (
               <p className="text-[13.5px] text-ink-400 text-center py-10">Scan or tap a product to start.</p>
@@ -284,8 +330,12 @@ export function TillApp(props: {
                   <li key={l.variantId} className="py-3 grid gap-1.5">
                     <div className="flex justify-between gap-3 text-[13.5px]">
                       <span className="font-medium leading-snug">{l.productName}{l.label && <span className="text-ink-400 font-normal"> · {l.label}</span>}</span>
-                      <span className="tnum whitespace-nowrap">{kes(l.net)}</span>
+                      <span className="tnum whitespace-nowrap">
+                        {l.promo > 0 && <s className="text-ink-400 mr-1.5">{kes(l.gross)}</s>}
+                        {kes(l.net)}
+                      </span>
                     </div>
+                    {l.offerTitle && <span className="text-[11.5px] text-brand-700">{l.offerTitle}</span>}
                     <div className="flex items-center justify-between gap-2 text-[12.5px] text-ink-600">
                       <div className="flex items-center gap-1">
                         <QtyButton label="−" onClick={() => setCart((c) => c.flatMap((x) => (x.variantId !== l.variantId ? [x] : x.qty > 1 ? [{ ...x, qty: x.qty - 1, discountCents: Math.min(x.discountCents, (x.qty - 1) * l.unit) }] : [])))} />
@@ -308,14 +358,20 @@ export function TillApp(props: {
               <span>{units} item{units === 1 ? "" : "s"}</span>
               <DiscountButton
                 currentCents={cartDiscountCents}
-                maxCents={grossCents - lineDiscounts}
+                maxCents={grossCents - promoCents - lineDiscounts}
                 limitCents={props.role === "owner" ? null : props.discountLimitCents}
-                onSet={setCartDiscountCents}
+                onSet={(c, pin) => { setCartDiscountCents(c); setOwnerPin(pin); }}
               />
             </div>
-            {cartDiscountCents + lineDiscounts > 0 && (
-              <div className="flex justify-between text-[13px] text-brand-700"><span>Discount</span><span className="tnum">−{kes(cartDiscountCents + lineDiscounts)}</span></div>
+            {promoCents > 0 && (
+              <div className="flex justify-between text-[13px] text-brand-700"><span>Offers</span><span className="tnum">−{kes(promoCents)}</span></div>
             )}
+            {cartDiscountCents + lineDiscounts > 0 && (
+              <div className="flex justify-between text-[13px] text-brand-700"><span>Discount{ownerPin ? " · owner approved" : ""}</span><span className="tnum">−{kes(cartDiscountCents + lineDiscounts)}</span></div>
+            )}
+            {customer?.earnsPoints && offerResult.bonusOffers.map((b) => (
+              <div key={b.id} className="flex justify-between text-[12.5px] text-good"><span>{b.title}</span><span className="tnum">+{fmtPoints(b.centipoints)} pts</span></div>
+            ))}
             <div className="flex justify-between items-baseline">
               <span className="text-[13px] text-ink-400">Total KES{wholesale ? " · wholesale prices" : ""}</span>
               <span className="text-[30px] font-semibold tracking-tight tnum">{kes(totalCents)}</span>
@@ -337,6 +393,7 @@ export function TillApp(props: {
         <PaySheet
           totalCents={totalCents}
           customer={customer}
+          exchange={exchange}
           onClose={() => setPaying(false)}
           submit={async (payments, idempotencyKey) => {
             const res = await completeSale({
@@ -346,10 +403,11 @@ export function TillApp(props: {
               lines: cart.map((l) => ({ variantId: l.variantId, qty: l.qty, manualDiscountCents: l.discountCents })),
               cartDiscountCents,
               payments,
+              ownerPin: ownerPin ?? undefined,
             });
             if (!res.ok) return res.error;
             setPaying(false);
-            setDone({ receiptNo: res.data.receiptNo, receiptToken: res.data.receiptToken, changeCents: res.data.changeCents, totalCents: res.data.totalCents });
+            setDone({ receiptNo: res.data.receiptNo, receiptToken: res.data.receiptToken, changeCents: res.data.changeCents, totalCents: res.data.totalCents, pointsEarned: res.data.pointsEarned, pointsBalance: customer.earnsPoints ? res.data.pointsBalance : null });
             printReceipt(res.data.receiptToken, payments.some((p) => p.method === "cash")).catch((e) => setToast(`Receipt didn't print: ${e.message}`));
             return null;
           }}
@@ -543,10 +601,20 @@ function CustomerSlot({ customer, onChange, phoneRef }: { customer: TillCustomer
   );
 }
 
-function DiscountButton({ currentCents, maxCents, limitCents, onSet }: { currentCents: number; maxCents: number; limitCents: number | null; onSet: (c: number) => void }) {
+function DiscountButton({ currentCents, maxCents, limitCents, onSet }: { currentCents: number; maxCents: number; limitCents: number | null; onSet: (c: number, ownerPin: string | null) => void }) {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [needPin, setNeedPin] = useState<number | null>(null);
+  if (needPin !== null) {
+    return (
+      <PinPrompt
+        title={`Owner approval for KES ${kes(needPin)} off`}
+        onCancel={() => setNeedPin(null)}
+        onPin={(pin) => { onSet(needPin, pin); setNeedPin(null); setOpen(false); }}
+      />
+    );
+  }
   if (!open) return <button className="text-brand-700 underline cursor-pointer" onClick={() => { setValue(currentCents ? String(currentCents / 100) : ""); setOpen(true); }}>{currentCents ? "Edit discount" : "Add discount"}</button>;
   return (
     <div className="fixed inset-0 z-40 grid place-items-center bg-black/30 p-4" onClick={() => setOpen(false)}>
@@ -559,17 +627,18 @@ function DiscountButton({ currentCents, maxCents, limitCents, onSet }: { current
           let cents = input.endsWith("%") ? Math.round((maxCents * Number(input.slice(0, -1))) / 100) : parseKES(input || "0");
           if (Number.isNaN(cents) || cents < 0) return setError("Enter an amount like 100 or a percent like 10%.");
           cents = Math.min(cents, maxCents);
-          if (limitCents !== null && cents > limitCents) return setError(`Cashiers can give up to KES ${kes(limitCents)}. Ask the owner for more (owner approval comes next week).`);
-          onSet(cents);
+          if (limitCents !== null && cents > limitCents) return setNeedPin(cents);
+          onSet(cents, null);
           setOpen(false);
         }}
       >
         <h2 className="text-[15px] font-semibold">Discount on this sale</h2>
         <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} placeholder="e.g. 100 or 10%" className="h-11 rounded-lg bg-white px-3 text-[16px] tnum border-[0.5px] border-ink-200 select-text" />
+        {limitCents !== null && <p className="text-[12px] text-ink-400">Above KES {kes(limitCents)} the owner enters their PIN.</p>}
         {error && <p className="text-bad text-[12.5px]">{error}</p>}
         <div className="flex gap-2">
           <button className="h-10 flex-1 rounded-lg bg-brand text-brand-ink font-semibold cursor-pointer">Apply</button>
-          {currentCents > 0 && <button type="button" onClick={() => { onSet(0); setOpen(false); }} className="h-10 px-3 rounded-lg border-[0.5px] border-ink-200 cursor-pointer">Remove</button>}
+          {currentCents > 0 && <button type="button" onClick={() => { onSet(0, null); setOpen(false); }} className="h-10 px-3 rounded-lg border-[0.5px] border-ink-200 cursor-pointer">Remove</button>}
         </div>
       </form>
     </div>
@@ -603,9 +672,12 @@ function VariantPicker({ product, priceOf, onPick, onClose }: { product: TillPro
   );
 }
 
-function PaySheet({ totalCents, customer, onClose, submit }: { totalCents: number; customer: TillCustomer; onClose: () => void; submit: (p: Tender[], key: string) => Promise<string | null> }) {
+function PaySheet({ totalCents, customer, exchange, onClose, submit }: { totalCents: number; customer: TillCustomer; exchange: ExchangeCredit | null; onClose: () => void; submit: (p: Tender[], key: string) => Promise<string | null> }) {
   const idempotencyKey = useRef(crypto.randomUUID()).current;
-  const [tenders, setTenders] = useState<Tender[]>([]);
+  // Exchange credit is applied first, automatically.
+  const [tenders, setTenders] = useState<Tender[]>(() =>
+    exchange && exchange.customerId === customer.id ? [{ method: "exchange", amountCents: Math.min(exchange.creditLeftCents, totalCents), returnId: exchange.returnId }] : []
+  );
   const [method, setMethod] = useState<Tender["method"]>("cash");
   const [amount, setAmount] = useState("");
   const [cashGiven, setCashGiven] = useState("");
@@ -632,6 +704,10 @@ function PaySheet({ totalCents, customer, onClose, submit }: { totalCents: numbe
       if (!/^[A-Z0-9]{10}$/.test(c)) { setError("Type the 10-character M-Pesa code from the customer's SMS."); return null; }
       if (tenders.some((x) => x.mpesaCode === c)) { setError("That code is already added."); return null; }
       t = { method, amountCents, mpesaCode: c };
+    } else if (method === "points") {
+      const used = tenders.filter((x) => x.method === "points").reduce((a, x) => a + x.amountCents, 0);
+      if (amountCents + used > customer.pointsValueCents) { setError(`Points cover up to KES ${kes(customer.pointsValueCents - used)}.`); return null; }
+      t = { method, amountCents };
     } else {
       if (amountCents > customer.creditAvailableCents) { setError(`Only KES ${kes(customer.creditAvailableCents)} of credit is available.`); return null; }
       t = { method, amountCents };
@@ -653,8 +729,11 @@ function PaySheet({ totalCents, customer, onClose, submit }: { totalCents: numbe
   const methods: { key: Tender["method"]; label: string }[] = [
     { key: "cash", label: "Cash" },
     { key: "mpesa", label: "M-Pesa" },
+    ...(customer.canRedeemPoints ? [{ key: "points" as const, label: "Points" }] : []),
     ...(customer.creditEnabled ? [{ key: "credit" as const, label: "On account" }] : []),
   ];
+  const tenderLabel = (t: Tender) =>
+    t.method === "cash" ? "Cash" : t.method === "mpesa" ? `M-Pesa ${t.mpesaCode}` : t.method === "points" ? "Loyalty points" : t.method === "exchange" ? "Exchange credit" : "On account";
 
   return (
     <div className="fixed inset-0 z-40 grid place-items-center bg-black/30 p-4" onClick={() => !pending && onClose()}>
@@ -668,7 +747,7 @@ function PaySheet({ totalCents, customer, onClose, submit }: { totalCents: numbe
           <ul className="grid gap-1.5 text-[13.5px]">
             {tenders.map((t, i) => (
               <li key={i} className="flex justify-between items-center rounded-lg bg-ink-50 px-3 py-2">
-                <span>{t.method === "cash" ? "Cash" : t.method === "mpesa" ? `M-Pesa ${t.mpesaCode}` : "On account"}</span>
+                <span>{tenderLabel(t)}</span>
                 <span className="flex items-center gap-3 tnum">{kes(t.amountCents)}<button className="text-ink-400 hover:text-bad cursor-pointer" onClick={() => setTenders((x) => x.filter((_, j) => j !== i))}>✕</button></span>
               </li>
             ))}
@@ -677,7 +756,7 @@ function PaySheet({ totalCents, customer, onClose, submit }: { totalCents: numbe
 
         {remaining > 0 ? (
           <>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {methods.map((m) => (
                 <button key={m.key} onClick={() => setMethod(m.key)} className={`h-11 rounded-lg text-[14px] font-medium cursor-pointer border-[0.5px] ${method === m.key ? "bg-brand text-brand-ink border-transparent" : "bg-white border-ink-200 hover:bg-ink-50"}`}>{m.label}</button>
               ))}
@@ -707,6 +786,7 @@ function PaySheet({ totalCents, customer, onClose, submit }: { totalCents: numbe
               </label>
             )}
             {method === "credit" && <p className="text-[13px] text-ink-600">KES {kes(customer.creditAvailableCents)} of credit available.</p>}
+            {method === "points" && <p className="text-[13px] text-ink-600">{fmtPoints(customer.pointsBalance)} points = KES {kes(customer.pointsValueCents)} available. Points aren't earned on the part paid with points.</p>}
             <div className="grid grid-cols-2 gap-2">
               <button disabled={pending} onClick={() => addTender()} className="h-12 rounded-lg border-[0.5px] border-ink-200 font-medium hover:bg-ink-50 cursor-pointer">Split payment</button>
               <button
@@ -731,7 +811,7 @@ function PaySheet({ totalCents, customer, onClose, submit }: { totalCents: numbe
   );
 }
 
-function DoneSheet({ receiptNo, changeCents, totalCents, onNext, onReprint }: { receiptNo: string; changeCents: number; totalCents: number; onNext: () => void; onReprint: () => void }) {
+function DoneSheet({ receiptNo, changeCents, totalCents, pointsEarned, pointsBalance, onNext, onReprint }: { receiptNo: string; changeCents: number; totalCents: number; pointsEarned: number; pointsBalance: number | null; onNext: () => void; onReprint: () => void }) {
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Enter" && onNext();
     window.addEventListener("keydown", k);
@@ -745,6 +825,9 @@ function DoneSheet({ receiptNo, changeCents, totalCents, onNext, onReprint }: { 
           <div className="grid gap-1"><span className="text-[14px] text-ink-600">Give change</span><span className="text-[40px] font-semibold tnum tracking-tight text-good">{kes(changeCents)}</span></div>
         ) : (
           <span className="text-[22px] font-semibold">Paid in full</span>
+        )}
+        {pointsBalance !== null && (
+          <span className="text-[13px] text-ink-600">+{fmtPoints(pointsEarned)} points · balance {fmtPoints(pointsBalance)}</span>
         )}
         <div className="grid grid-cols-2 gap-2">
           <button onClick={onReprint} className="h-12 rounded-lg border-[0.5px] border-ink-200 font-medium hover:bg-ink-50 cursor-pointer">Print again</button>

@@ -160,7 +160,7 @@ test("till rules: price level, M-Pesa reuse, credit limit, discount limit", () =
     // Cashier discount above KES 500 needs the owner
     await assert.rejects(
       checkout(tx, { ...base, idempotencyKey: "d1", customerId: f.retail, lines: [{ variantId: f.relaxer, qty: 10, manualDiscountCents: 50_100 }], payments: [{ method: "cash", amountCents: 69_900 }] }),
-      /need the owner's approval/
+      /need the owner's PIN/
     );
     // Payments must match the total
     await assert.rejects(

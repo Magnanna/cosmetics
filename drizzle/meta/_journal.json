@@ -57,6 +57,13 @@
       "when": 1790715688859,
       "tag": "0007_scan_receive",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790716799272,
+      "tag": "0008_week3",
+      "breakpoints": true
     }
   ]
 }

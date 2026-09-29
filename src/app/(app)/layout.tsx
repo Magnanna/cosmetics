@@ -8,6 +8,14 @@ const NAV: { label: string; items: { href: string; label: string; perm: Permissi
     items: [
       { href: "/", label: "Today", perm: null },
       { href: "/till", label: "Open the till", perm: "till.sell" },
+      { href: "/sales/shifts", label: "Shifts & cash-ups", perm: "reports.view" },
+    ],
+  },
+  {
+    label: "Customers",
+    items: [
+      { href: "/customers", label: "Customers", perm: "customers.view" },
+      { href: "/offers", label: "Offers", perm: "catalog.view" },
     ],
   },
   {
@@ -29,6 +37,13 @@ const NAV: { label: string; items: { href: string; label: string; perm: Permissi
     ],
   },
   { label: "Money", items: [{ href: "/books/accounts", label: "Chart of accounts", perm: "books.view" }] },
+  {
+    label: "Settings",
+    items: [
+      { href: "/settings/pin", label: "My PIN", perm: null },
+      { href: "/settings/messages", label: "SMS messages", perm: "settings.edit" },
+    ],
+  },
 ];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {

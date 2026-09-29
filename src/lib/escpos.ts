@@ -84,6 +84,8 @@ export function receiptBytes(r: ReceiptData, opts: { openDrawer: boolean; reprin
       if ((p.changeCents ?? 0) > 0) b.cols("Change", money(p.changeCents!));
     } else if (p.method === "mpesa") b.cols(`M-Pesa ${p.mpesaCode}`, money(p.amountCents));
     else if (p.method === "credit") b.cols("On account", money(p.amountCents));
+    else if (p.method === "points") b.cols("Paid with points", money(p.amountCents));
+    else if (p.method === "exchange") b.cols("Exchange credit", money(p.amountCents));
     else b.cols(p.method, money(p.amountCents));
   }
   if (r.customer.pointsBalance !== null) {

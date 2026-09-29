@@ -1,7 +1,8 @@
 import { and, asc, eq, sql } from "drizzle-orm";
-import { db, brands, categories, products, registers, stockLots, variantBarcodes, variants } from "@/db";
+import { db, accounts, brands, categories, products, registers, stockLots, variantBarcodes, variants } from "@/db";
 import { inOrg, requirePage } from "@/lib/auth";
 import { openShiftFor } from "@/lib/shifts";
+import { loadOffers } from "@/lib/offers-db";
 import { TillApp, type TillProduct } from "./till-app";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ export default async function TillPage() {
   const [register] = await db.select().from(registers).where(eq(registers.orgId, orgId)).orderBy(asc(registers.id)).limit(1);
   const shift = register ? await inOrg(s, () => openShiftFor(db, register.id)) : null;
 
-  const [rows, codes, stock, cats] = await Promise.all([
+  const [rows, codes, stock, cats, offerDefs, expenseAccounts] = await Promise.all([
     db
       .select({
         variantId: variants.id,
@@ -21,6 +22,7 @@ export default async function TillPage() {
         productName: products.name,
         imageUrl: products.imageUrl,
         brand: brands.name,
+        brandId: products.brandId,
         categoryId: products.categoryId,
         option1Name: products.option1Name,
         option2Name: products.option2Name,
@@ -42,6 +44,8 @@ export default async function TillPage() {
       .where(eq(stockLots.orgId, orgId))
       .groupBy(stockLots.variantId),
     db.select({ id: categories.id, parentId: categories.parentId, name: categories.name }).from(categories).where(and(eq(categories.orgId, orgId), eq(categories.archived, false))).orderBy(asc(categories.sortOrder)),
+    loadOffers(db, orgId),
+    db.select({ code: accounts.code, name: accounts.name }).from(accounts).where(and(eq(accounts.orgId, orgId), eq(accounts.type, "expense"), eq(accounts.archived, false), sql`${accounts.code} >= '6000'`)).orderBy(asc(accounts.code)),
   ]);
 
   const barcodes = new Map<number, string[]>();
@@ -58,8 +62,10 @@ export default async function TillPage() {
         id: r.productId,
         name: r.productName,
         brand: r.brand,
+        brandId: r.brandId,
         imageUrl: r.imageUrl,
         topCategoryId: r.categoryId ? topOf.get(r.categoryId) ?? null : null,
+        categoryIds: r.categoryId ? [...new Set([r.categoryId, topOf.get(r.categoryId) ?? r.categoryId])] : [],
         optionNames: [r.option1Name, r.option2Name].filter(Boolean) as string[],
         variants: [],
       };
@@ -89,6 +95,8 @@ export default async function TillPage() {
       discountLimitCents={s.org.cashierDiscountLimitCents}
       products={[...byProduct.values()]}
       categories={topCategories}
+      offers={offerDefs}
+      expenseAccounts={expenseAccounts}
     />
   );
 }

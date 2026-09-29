@@ -12,6 +12,7 @@ export const SYS = {
   INVENTORY: "1400",
   AP: "2100",
   LOYALTY_LIABILITY: "2200",
+  EXCHANGE_CREDIT: "2250",
   TOT_PAYABLE: "2300",
   SALARIES_PAYABLE: "2400",
   OWNER_EQUITY: "3000",
@@ -55,6 +56,7 @@ export const SEED_ACCOUNTS: AccountSeed[] = [
   // Liabilities
   { code: "2100", name: "Accounts Payable", type: "liability", subtype: "payable", description: "Money owed to suppliers for stock bought on credit.", system: true },
   { code: "2200", name: "Loyalty Points Liability", type: "liability", subtype: "current", description: "Value of loyalty points customers have earned but not yet spent.", system: true },
+  { code: "2250", name: "Exchange Credit", type: "liability", subtype: "current", description: "Value of returned items a customer can still spend on an exchange.", system: true },
   { code: "2300", name: "Turnover Tax Payable", type: "liability", subtype: "current", description: "Turnover Tax owed to KRA, due by the 20th of the following month.", system: true },
   { code: "2400", name: "Salaries Payable", type: "liability", subtype: "current", description: "Net salaries owed to staff.", system: true },
   // Equity

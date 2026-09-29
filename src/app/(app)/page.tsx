@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { and, count, eq, sql } from "drizzle-orm";
-import { db, priceChangeRequests, products, stockLots, variants } from "@/db";
+import { db, accounts, journalLines, priceChangeRequests, products, salePayments, sales, shifts, stockLots, variants } from "@/db";
 import { requirePage } from "@/lib/auth";
 import { can } from "@/lib/permissions";
+import { SYS } from "@/lib/coa";
+import { nairobiDate } from "@/lib/time";
 import { Card, Money } from "@/components/ui";
 
 export default async function TodayPage() {
@@ -25,6 +27,16 @@ export default async function TodayPage() {
     db.select({ n: count() }).from(priceChangeRequests).where(and(eq(priceChangeRequests.orgId, orgId), eq(priceChangeRequests.status, "pending"))),
   ]);
 
+  const today = nairobiDate();
+  const [[todays], tenders, [drawer], shortShifts] = await Promise.all([
+    db.select({ n: sql<number>`count(*)::int`, total: sql<string>`coalesce(sum(${sales.totalCents}),0)`, cost: sql<string>`coalesce(sum(${sales.costCents}),0)` }).from(sales).where(and(eq(sales.orgId, orgId), eq(sales.businessDate, today))),
+    db.select({ method: salePayments.method, total: sql<string>`sum(${salePayments.amountCents})` }).from(salePayments).innerJoin(sales, eq(sales.id, salePayments.saleId)).where(and(eq(sales.orgId, orgId), eq(sales.businessDate, today))).groupBy(salePayments.method),
+    db.select({ b: sql<string>`coalesce(sum(${journalLines.debitCents} - ${journalLines.creditCents}),0)` }).from(journalLines).innerJoin(accounts, eq(accounts.id, journalLines.accountId)).where(and(eq(journalLines.orgId, orgId), eq(accounts.code, SYS.CASH_DRAWER))),
+    db.select({ id: shifts.id, v: shifts.varianceCents, at: shifts.closedAt }).from(shifts).where(and(eq(shifts.orgId, orgId), eq(shifts.status, "closed"), sql`${shifts.varianceCents} <> 0`, sql`${shifts.closedAt} > now() - interval '7 days'`)).limit(5),
+  ]);
+  const salesToday = Number(todays.total);
+  const marginPct = salesToday > 0 ? Math.round(((salesToday - Number(todays.cost)) / salesToday) * 100) : null;
+  const tender = (m: string) => Number(tenders.find((t) => t.method === m)?.total ?? 0);
   const showCosts = can(s.role, "catalog.view_costs");
   const hour = Number(new Intl.DateTimeFormat("en-KE", { hour: "numeric", hour12: false, timeZone: "Africa/Nairobi" }).format(new Date()));
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -33,8 +45,42 @@ export default async function TodayPage() {
     <div className="grid gap-6">
       <div>
         <h1 className="text-[26px] font-semibold tracking-tight">{greeting}, {s.member.name.split(" ")[0] || "there"}</h1>
-        <p className="text-[13.5px] text-ink-400 mt-1">Sales, cash and shifts appear here once the till is running.</p>
+        <p className="text-[13.5px] text-ink-400 mt-1">{new Date().toLocaleDateString("en-KE", { timeZone: "Africa/Nairobi", dateStyle: "full" })}</p>
       </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="p-5 grid gap-1">
+          <span className="text-[12.5px] text-ink-400">Sales today (KES)</span>
+          <Money cents={salesToday} className="money-lg" />
+          <span className="text-[12px] text-ink-400">{todays.n} receipt{todays.n === 1 ? "" : "s"}{todays.n ? ` · avg ${(salesToday / todays.n / 100).toLocaleString("en-KE", { maximumFractionDigits: 0 })}` : ""}</span>
+        </Card>
+        {showCosts && (
+          <Card className="p-5 grid gap-1">
+            <span className="text-[12.5px] text-ink-400">Gross margin today</span>
+            <span className="money-lg">{marginPct === null ? "—" : `${marginPct}%`}</span>
+            <span className="text-[12px] text-ink-400">after the cost of what was sold</span>
+          </Card>
+        )}
+        <Card className="p-5 grid gap-1">
+          <span className="text-[12.5px] text-ink-400">Cash in the drawer (KES)</span>
+          <Money cents={Number(drawer.b)} className="money-lg" />
+          <span className="text-[12px] text-ink-400">M-Pesa today {(tender("mpesa") / 100).toLocaleString("en-KE", { minimumFractionDigits: 2 })}</span>
+        </Card>
+        <Card className="p-5 grid gap-1">
+          <span className="text-[12.5px] text-ink-400">Sold on account today (KES)</span>
+          <Money cents={tender("credit")} className="money-lg" />
+          <Link href="/customers?type=credit" className="text-[12px] text-brand-700 underline">Credit customers</Link>
+        </Card>
+      </div>
+      {shortShifts.length > 0 && can(s.role, "reports.view") && (
+        <Card className="p-4 flex flex-wrap gap-x-4 gap-y-1 items-center text-[13.5px]">
+          <span className="font-semibold">Tills that didn't balance this week:</span>
+          {shortShifts.map((x) => (
+            <Link key={x.id} href={`/sales/shifts/${x.id}`} className={`underline tnum ${x.v! < 0 ? "text-bad" : "text-warn"}`}>
+              {x.at?.toLocaleDateString("en-KE", { timeZone: "Africa/Nairobi", dateStyle: "medium" })} {x.v! < 0 ? "short" : "over"} {(Math.abs(x.v!) / 100).toLocaleString("en-KE")}
+            </Link>
+          ))}
+        </Card>
+      )}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="p-5 grid gap-1">
           <span className="text-[12.5px] text-ink-400">Products</span>

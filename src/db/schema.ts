@@ -478,6 +478,7 @@ export const saleLines = pgTable("sale_lines", {
   unitPriceCents: money("unit_price_cents").notNull(),
   manualDiscountCents: money("manual_discount_cents").notNull().default(0),
   promoDiscountCents: money("promo_discount_cents").notNull().default(0),
+  offerId: integer("offer_id"),
   lineTotalCents: money("line_total_cents").notNull(),
   costCents: money("cost_cents").notNull(),
   returnedQty: integer("returned_qty").notNull().default(0),
@@ -492,6 +493,10 @@ export const salePayments = pgTable("sale_payments", {
   tenderedCents: money("tendered_cents"), // cash handed over
   changeCents: money("change_cents"),
   mpesaCode: text("mpesa_code"),
+  /** For method "exchange": the return whose credit paid for this. */
+  returnId: integer("return_id"),
+  /** For method "points": centipoints spent. */
+  pointsSpent: bigint("points_spent_centipoints", { mode: "number" }),
 }, (t) => [
   index("idx_sale_payments_sale").on(t.saleId),
   uniqueIndex("uq_sale_payments_org_mpesa").on(t.orgId, t.mpesaCode),
@@ -585,3 +590,117 @@ export const photoTokens = pgTable("photo_tokens", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   usedAt: timestamp("used_at", { withTimezone: true }),
 });
+
+/* ---------------- Week 3: loyalty, returns, offers, credit, SMS ---------------- */
+
+/** Every points movement. Points are centipoints (1,447.91 pts = 144791). */
+export const loyaltyLedger = pgTable("loyalty_ledger", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  customerId: integer("customer_id").notNull().references(() => customers.id),
+  kind: text("kind").notNull(), // earn | bonus | redeem | reverse | adjust
+  points: bigint("points_centipoints", { mode: "number" }).notNull(), // signed
+  valueCents: money("value_cents").notNull(), // signed, what hit Loyalty Liability
+  saleId: integer("sale_id"),
+  returnId: integer("return_id"),
+  note: text("note"),
+  memberId: integer("member_id"),
+  createdAt: createdAt(),
+}, (t) => [index("idx_loyalty_customer").on(t.orgId, t.customerId)]);
+
+export const saleReturns = pgTable("sale_returns", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  returnNo: text("return_no").notNull(),
+  saleId: integer("sale_id").notNull().references(() => sales.id),
+  shiftId: integer("shift_id").references(() => shifts.id),
+  customerId: integer("customer_id").notNull().references(() => customers.id),
+  /** exchange = credit to spend now; refund = money back (owner PIN). */
+  kind: text("kind").notNull(),
+  refundMethod: text("refund_method"), // cash | mpesa | credit | points — for refunds
+  totalCents: money("total_cents").notNull(),
+  costCents: money("cost_cents").notNull(),
+  /** Exchange credit not yet spent on a new sale. */
+  creditLeftCents: money("credit_left_cents").notNull().default(0),
+  approvedBy: integer("approved_by"),
+  memberId: integer("member_id").notNull(),
+  idempotencyKey: text("idempotency_key").notNull(),
+  journalEntryId: integer("journal_entry_id"),
+  createdAt: createdAt(),
+}, (t) => [
+  uniqueIndex("uq_returns_org_no").on(t.orgId, t.returnNo),
+  uniqueIndex("uq_returns_org_idem").on(t.orgId, t.idempotencyKey),
+  index("idx_returns_sale").on(t.saleId),
+]);
+
+export const saleReturnLines = pgTable("sale_return_lines", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  returnId: integer("return_id").notNull().references(() => saleReturns.id),
+  saleLineId: integer("sale_line_id").notNull().references(() => saleLines.id),
+  variantId: integer("variant_id").notNull().references(() => variants.id),
+  qty: integer("qty").notNull(),
+  amountCents: money("amount_cents").notNull(),
+  costCents: money("cost_cents").notNull(),
+}, (t) => [index("idx_return_lines_return").on(t.returnId)]);
+
+/** Scheduled promotions, posted like announcements. */
+export const offers = pgTable("offers", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  /** percent_off | amount_off | fixed_price | bonus_points | points_multiplier */
+  type: text("type").notNull(),
+  /** percent_off: basis points; amount_off/fixed_price: cents per unit; bonus_points: centipoints; points_multiplier: ×100. */
+  value: integer("value").notNull(),
+  /** bonus_points: spend on target items needed to qualify. */
+  minSpendCents: money("min_spend_cents").notNull().default(0),
+  audience: text("audience").notNull().default("all"), // all | retail | wholesale
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+  active: boolean("active").notNull().default(true),
+  createdBy: integer("created_by"),
+  createdAt: createdAt(),
+}, (t) => [index("idx_offers_org_window").on(t.orgId, t.startsAt, t.endsAt)]);
+
+export const offerTargets = pgTable("offer_targets", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  offerId: integer("offer_id").notNull().references(() => offers.id),
+  kind: text("kind").notNull(), // variant | product | brand | category
+  targetId: integer("target_id").notNull(),
+}, (t) => [index("idx_offer_targets_offer").on(t.offerId)]);
+
+/** Money received from credit customers against what they owe. */
+export const customerPayments = pgTable("customer_payments", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  customerId: integer("customer_id").notNull().references(() => customers.id),
+  date: text("date").notNull(),
+  amountCents: money("amount_cents").notNull(),
+  method: text("method").notNull(), // cash | mpesa | bank
+  mpesaCode: text("mpesa_code"),
+  reference: text("reference"),
+  shiftId: integer("shift_id"),
+  journalEntryId: integer("journal_entry_id"),
+  memberId: integer("member_id"),
+  createdAt: createdAt(),
+}, (t) => [
+  index("idx_customer_payments_customer").on(t.orgId, t.customerId),
+  uniqueIndex("uq_customer_payments_mpesa").on(t.orgId, t.mpesaCode),
+]);
+
+export const smsLog = pgTable("sms_log", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  customerId: integer("customer_id"),
+  to: text("to").notNull(),
+  category: text("category").notNull(), // receipt | credit | points | owner | marketing
+  body: text("body").notNull(),
+  status: text("status").notNull(), // sent | failed | skipped
+  providerId: text("provider_id"),
+  costText: text("cost_text"),
+  error: text("error"),
+  createdAt: createdAt(),
+}, (t) => [index("idx_sms_org_time").on(t.orgId, t.createdAt)]);

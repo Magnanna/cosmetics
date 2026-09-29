@@ -43,11 +43,16 @@ export default async function ReceiptPage({ params, searchParams }: { params: Pr
             {p.method === "cash" && (p.changeCents ?? 0) > 0 && <div className="flex justify-between tnum"><span>Change</span><span>{money(p.changeCents!)}</span></div>}
             {p.method === "mpesa" && <div className="flex justify-between tnum"><span>M-Pesa {p.mpesaCode}</span><span>{money(p.amountCents)}</span></div>}
             {p.method === "credit" && <div className="flex justify-between tnum"><span>On account</span><span>{money(p.amountCents)}</span></div>}
+            {p.method === "points" && <div className="flex justify-between tnum"><span>Paid with points</span><span>{money(p.amountCents)}</span></div>}
+            {p.method === "exchange" && <div className="flex justify-between tnum"><span>Exchange credit</span><span>{money(p.amountCents)}</span></div>}
           </div>
         ))}
       </div>
+      {r.customer.pointsBalance !== null && r.pointsEarned > 0 && (
+        <div className="mt-2 flex justify-between tnum"><span>Points earned</span><span>{(r.pointsEarned / 100).toFixed(2)}</span></div>
+      )}
       {r.customer.pointsBalance !== null && (
-        <div className="mt-2 flex justify-between tnum"><span>Points balance</span><span>{(r.customer.pointsBalance / 100).toFixed(2)}</span></div>
+        <div className="flex justify-between tnum"><span>Points balance</span><span>{(r.customer.pointsBalance / 100).toFixed(2)}</span></div>
       )}
       {r.shop.footer && <p className="mt-3 text-center">{r.shop.footer}</p>}
     </main>
