@@ -1,4 +1,5 @@
 {
+  "framework": "nextjs",
   "regions": ["fra1"],
   "crons": [{ "path": "/api/cron/daily-summary", "schedule": "0 18 * * *" }]
 }
