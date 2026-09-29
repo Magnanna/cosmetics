@@ -2,7 +2,7 @@
 
 /*
   Kenfri design language — Zeno "Apple calm" tokens with a Masterpiece red (deep wine) accent on a
-  SaaS-white canvas. Text on the accent is white (brand-ink).
+  Stripe-style cool white canvas (#F6F9FC). Text on the accent is white (brand-ink).
   Hairline separators, 12px cards, big quiet tabular numerals for money,
   one restrained accent used only for primary actions and active states.
   Red/amber/green are reserved for money and stock status. Light mode only.
@@ -14,9 +14,9 @@
   --color-ink-900: #1d1d1f;
   --color-ink-600: #515154;
   --color-ink-400: #86868b;
-  --color-ink-200: #d2d2d7;
-  --color-ink-100: #e8e8ed;
-  --color-ink-50: #fafafa;
+  --color-ink-200: #d5dbe3;
+  --color-ink-100: #e3e8ee;
+  --color-ink-50: #f6f9fc;
 
   --color-brand: #5a2132;
   --color-brand-600: #6e2b3f;
@@ -63,7 +63,7 @@ html {
 .tnum { font-variant-numeric: tabular-nums; }
 
 .sidebar-chrome {
-  background: rgba(250, 250, 250, 0.85);
+  background: rgba(246, 249, 252, 0.85);
   backdrop-filter: blur(20px) saturate(1.4);
   -webkit-backdrop-filter: blur(20px) saturate(1.4);
 }

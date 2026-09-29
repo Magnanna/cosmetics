@@ -652,7 +652,7 @@ All UI stories implicitly include: **Typecheck/lint passes** and **Verify in bro
 | `--color-ink-400` | `#86868b` | Tertiary / labels |
 | `--color-ink-200` | `#d2d2d7` | Hairline borders |
 | `--color-ink-100` | `#e8e8ed` | Card borders, dividers |
-| `--color-ink-50` | `#fafafa` | App canvas (SaaS white) |
+| `--color-ink-50` | `#f6f9fc` | App canvas (Stripe-style cool white) |
 | `--color-good` | `#1f8a4c` | Paid, positive variance |
 | `--color-warn` | `#b8860b` | Pending, low stock |
 | `--color-bad` | `#c0392b` | Overdue, shortage, errors |
