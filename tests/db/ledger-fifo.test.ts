@@ -6,7 +6,7 @@ loadEnv();
 const { db, orgs, products, variants, journalLines, accounts } = await import("../../src/db");
 const { eq, and, sql } = await import("drizzle-orm");
 const { runWithOrg } = await import("../../src/lib/context");
-const { postOpeningStock, postStockAdjustment } = await import("../../src/lib/stock-postings");
+const { postOpeningStock, recordStockAdjustment } = await import("../../src/lib/stock-postings");
 const { removeStock, addStock, onHand, totalStockValueCents } = await import("../../src/lib/inventory");
 const { acct, postEntry, UnbalancedEntryError, BooksLockedError } = await import("../../src/lib/ledger");
 const { SYS } = await import("../../src/lib/coa");
@@ -81,7 +81,7 @@ test("FIFO + deficit settlement keeps stock value equal to Inventory GL", () =>
       assert.deepEqual(await onHand(tx, v), { qty: 22, valueCents: 66_000 });
 
       // Damaged: 3 units out at FIFO cost
-      await postStockAdjustment(tx, { variantId: v, qtyDelta: -3, reason: "damaged", date });
+      await recordStockAdjustment(tx, { variantId: v, qtyDelta: -3, reason: "damaged", date });
       assert.deepEqual(await onHand(tx, v), { qty: 19, valueCents: 57_000 });
 
       assert.equal(await glBalance(tx, SYS.INVENTORY), await totalStockValueCents(tx));

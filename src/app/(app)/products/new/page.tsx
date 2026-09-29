@@ -21,7 +21,7 @@ export default async function NewProductPage() {
     <>
       <PageHeader
         title="New product"
-        subtitle={can(s.role, "catalog.set_prices") ? "Prices apply immediately." : "Your prices go to the owner for approval."}
+        subtitle="Prices apply immediately. Receiving a delivery? Use Receive stock — scanning creates products for you."
       />
       <ProductForm brands={brandRows} categories={categoryOptions} canStock={can(s.role, "stock.receive")} />
     </>

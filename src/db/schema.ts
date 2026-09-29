@@ -19,6 +19,7 @@ import {
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 const money = (name: string) => bigint(name, { mode: "number" });
 const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
@@ -314,3 +315,273 @@ export const customers = pgTable("customers", {
   notes: text("notes"),
   createdAt: createdAt(),
 }, (t) => [uniqueIndex("uq_customers_org_phone").on(t.orgId, t.phone)]);
+
+/* ---------------- Counters ---------------- */
+
+/** Gap-free per-org sequences (receipt numbers, bill numbers). Incremented inside the posting transaction. */
+export const counters = pgTable("counters", {
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  name: text("name").notNull(),
+  value: integer("value").notNull().default(0),
+}, (t) => [uniqueIndex("uq_counters_org_name").on(t.orgId, t.name)]);
+
+/* ---------------- Supplier bills (stock in) ---------------- */
+
+export const bills = pgTable("bills", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  supplierId: integer("supplier_id").notNull().references(() => suppliers.id),
+  supplierInvoiceNo: text("supplier_invoice_no").notNull(),
+  invoiceDate: text("invoice_date").notNull(),
+  dueDate: text("due_date").notNull(),
+  /** Lush prints VAT-inclusive rates; others add VAT on top. */
+  ratesIncludeVat: boolean("rates_include_vat").notNull().default(true),
+  vatBp: integer("vat_bp").notNull().default(1600),
+  netCents: money("net_cents").notNull(),
+  vatCents: money("vat_cents").notNull(),
+  totalCents: money("total_cents").notNull(),
+  paidCents: money("paid_cents").notNull().default(0),
+  status: text("status").notNull().default("posted"), // posted | void
+  journalEntryId: integer("journal_entry_id"),
+  notes: text("notes"),
+  memberId: integer("member_id"),
+  createdAt: createdAt(),
+}, (t) => [
+  uniqueIndex("uq_bills_org_supplier_invoice").on(t.orgId, t.supplierId, t.supplierInvoiceNo),
+  index("idx_bills_org_supplier").on(t.orgId, t.supplierId),
+]);
+
+export const billLines = pgTable("bill_lines", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  billId: integer("bill_id").notNull().references(() => bills.id),
+  variantId: integer("variant_id").notNull().references(() => variants.id),
+  supplierItemCode: text("supplier_item_code"),
+  qty: integer("qty").notNull(), // in the supplier's unit
+  unitsPerUom: integer("units_per_uom").notNull().default(1),
+  rateCents: money("rate_cents").notNull(),
+  units: integer("units").notNull(),
+  totalCents: money("total_cents").notNull(), // VAT-inclusive, what enters Inventory
+}, (t) => [index("idx_bill_lines_bill").on(t.billId)]);
+
+export const supplierPayments = pgTable("supplier_payments", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  supplierId: integer("supplier_id").notNull().references(() => suppliers.id),
+  date: text("date").notNull(),
+  amountCents: money("amount_cents").notNull(),
+  method: text("method").notNull(), // cash | mpesa | bank
+  reference: text("reference"),
+  journalEntryId: integer("journal_entry_id"),
+  memberId: integer("member_id"),
+  createdAt: createdAt(),
+}, (t) => [index("idx_supplier_payments_org_supplier").on(t.orgId, t.supplierId)]);
+
+export const supplierPaymentAllocations = pgTable("supplier_payment_allocations", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  paymentId: integer("payment_id").notNull().references(() => supplierPayments.id),
+  billId: integer("bill_id").notNull().references(() => bills.id),
+  amountCents: money("amount_cents").notNull(),
+}, (t) => [index("idx_spa_bill").on(t.billId)]);
+
+/* ---------------- Stock adjustments & stock takes ---------------- */
+
+export const stockAdjustments = pgTable("stock_adjustments", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  variantId: integer("variant_id").notNull().references(() => variants.id),
+  qtyDelta: integer("qty_delta").notNull(),
+  reason: text("reason").notNull(), // damaged | lost | found | owner_use | other
+  note: text("note"),
+  costCents: money("cost_cents").notNull().default(0),
+  journalEntryId: integer("journal_entry_id"),
+  memberId: integer("member_id"),
+  createdAt: createdAt(),
+}, (t) => [index("idx_adjustments_org").on(t.orgId, t.createdAt)]);
+
+/* ---------------- Till: shifts, sales ---------------- */
+
+export const shifts = pgTable("shifts", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  registerId: integer("register_id").notNull().references(() => registers.id),
+  openedBy: integer("opened_by").notNull(),
+  openedAt: timestamp("opened_at", { withTimezone: true }).notNull().defaultNow(),
+  openingFloatCents: money("opening_float_cents").notNull(),
+  status: text("status").notNull().default("open"), // open | closed
+  closedBy: integer("closed_by"),
+  closedAt: timestamp("closed_at", { withTimezone: true }),
+  countedCashCents: money("counted_cash_cents"),
+  expectedCashCents: money("expected_cash_cents"),
+  varianceCents: money("variance_cents"),
+  zReport: jsonb("z_report"),
+}, (t) => [
+  index("idx_shifts_org_register").on(t.orgId, t.registerId, t.status),
+  uniqueIndex("uq_shifts_one_open").on(t.registerId).where(sql`status = 'open'`),
+]);
+
+/** Cash put into or taken out of the drawer mid-shift. */
+export const cashMovements = pgTable("cash_movements", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  shiftId: integer("shift_id").notNull().references(() => shifts.id),
+  direction: text("direction").notNull(), // in | out
+  reason: text("reason").notNull(), // petty_expense | owner_drawing | float_topup | other
+  amountCents: money("amount_cents").notNull(),
+  note: text("note"),
+  journalEntryId: integer("journal_entry_id"),
+  memberId: integer("member_id"),
+  createdAt: createdAt(),
+}, (t) => [index("idx_cash_movements_shift").on(t.shiftId)]);
+
+export const sales = pgTable("sales", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  receiptNo: text("receipt_no").notNull(),
+  /** Unguessable token for the public web receipt (/r/<token>). */
+  receiptToken: text("receipt_token").notNull(),
+  channel: text("channel").notNull().default("pos"), // pos | online
+  registerId: integer("register_id").references(() => registers.id),
+  shiftId: integer("shift_id").references(() => shifts.id),
+  memberId: integer("member_id").notNull(),
+  customerId: integer("customer_id").notNull().references(() => customers.id),
+  priceLevel: text("price_level").notNull(), // retail | wholesale
+  businessDate: text("business_date").notNull(),
+  grossCents: money("gross_cents").notNull(), // list prices × qty
+  manualDiscountCents: money("manual_discount_cents").notNull().default(0),
+  promoDiscountCents: money("promo_discount_cents").notNull().default(0),
+  totalCents: money("total_cents").notNull(),
+  costCents: money("cost_cents").notNull(),
+  pointsEarned: bigint("points_earned_centipoints", { mode: "number" }).notNull().default(0),
+  discountApprovedBy: integer("discount_approved_by"),
+  status: text("status").notNull().default("completed"), // completed | partially_returned | returned
+  idempotencyKey: text("idempotency_key").notNull(),
+  journalEntryId: integer("journal_entry_id"),
+  createdAt: createdAt(),
+}, (t) => [
+  uniqueIndex("uq_sales_org_receipt").on(t.orgId, t.receiptNo),
+  uniqueIndex("uq_sales_org_idem").on(t.orgId, t.idempotencyKey),
+  uniqueIndex("uq_sales_token").on(t.receiptToken),
+  index("idx_sales_org_date").on(t.orgId, t.businessDate),
+  index("idx_sales_org_customer").on(t.orgId, t.customerId),
+  index("idx_sales_shift").on(t.shiftId),
+]);
+
+export const saleLines = pgTable("sale_lines", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  saleId: integer("sale_id").notNull().references(() => sales.id),
+  variantId: integer("variant_id").notNull().references(() => variants.id),
+  description: text("description").notNull(),
+  qty: integer("qty").notNull(),
+  unitPriceCents: money("unit_price_cents").notNull(),
+  manualDiscountCents: money("manual_discount_cents").notNull().default(0),
+  promoDiscountCents: money("promo_discount_cents").notNull().default(0),
+  lineTotalCents: money("line_total_cents").notNull(),
+  costCents: money("cost_cents").notNull(),
+  returnedQty: integer("returned_qty").notNull().default(0),
+}, (t) => [index("idx_sale_lines_sale").on(t.saleId), index("idx_sale_lines_org_variant").on(t.orgId, t.variantId)]);
+
+export const salePayments = pgTable("sale_payments", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  saleId: integer("sale_id").notNull().references(() => sales.id),
+  method: text("method").notNull(), // cash | mpesa | credit | points
+  amountCents: money("amount_cents").notNull(), // amount applied to the sale
+  tenderedCents: money("tendered_cents"), // cash handed over
+  changeCents: money("change_cents"),
+  mpesaCode: text("mpesa_code"),
+}, (t) => [
+  index("idx_sale_payments_sale").on(t.saleId),
+  uniqueIndex("uq_sale_payments_org_mpesa").on(t.orgId, t.mpesaCode),
+]);
+
+/**
+ * Weekly stock take. Staff count blind; each line remembers what the system
+ * said at the moment it was counted, so sales during the count don't create
+ * false differences. Only the difference is posted on approval.
+ */
+export const stockTakes = pgTable("stock_takes", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  locationId: integer("location_id").notNull().references(() => locations.id),
+  /** { all: true } | { categoryIds: number[] } | { brandIds: number[] } */
+  scope: jsonb("scope").notNull(),
+  scopeLabel: text("scope_label").notNull(),
+  status: text("status").notNull().default("counting"), // counting | submitted | approved | cancelled
+  startedBy: integer("started_by").notNull(),
+  submittedBy: integer("submitted_by"),
+  submittedAt: timestamp("submitted_at", { withTimezone: true }),
+  decidedBy: integer("decided_by"),
+  decidedAt: timestamp("decided_at", { withTimezone: true }),
+  varianceCostCents: money("variance_cost_cents"),
+  journalEntryId: integer("journal_entry_id"),
+  createdAt: createdAt(),
+}, (t) => [index("idx_stock_takes_org").on(t.orgId, t.status)]);
+
+export const stockTakeLines = pgTable("stock_take_lines", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  stockTakeId: integer("stock_take_id").notNull().references(() => stockTakes.id),
+  variantId: integer("variant_id").notNull().references(() => variants.id),
+  countedQty: integer("counted_qty"),
+  /** System on-hand when this line was last counted. */
+  systemQtyAtCount: integer("system_qty_at_count"),
+  countedBy: integer("counted_by"),
+  countedAt: timestamp("counted_at", { withTimezone: true }),
+  /** Filled on approval: qty and FIFO cost actually adjusted. */
+  adjustedQty: integer("adjusted_qty"),
+  adjustedCostCents: money("adjusted_cost_cents"),
+}, (t) => [uniqueIndex("uq_stl_take_variant").on(t.stockTakeId, t.variantId)]);
+
+/* ---------------- Scan-to-receive ---------------- */
+
+/**
+ * Shared barcode library (not per org, on purpose): what a barcode is called
+ * and looks like, from our own shops or free online databases. Every shop
+ * that names a product teaches the next one.
+ */
+export const barcodeLibrary = pgTable("barcode_library", {
+  code: text("code").primaryKey(),
+  name: text("name"),
+  brand: text("brand"),
+  size: text("size"),
+  imageUrl: text("image_url"),
+  source: text("source").notNull(), // shop | openbeautyfacts | openfoodfacts | upcitemdb | none
+  lookedUpAt: timestamp("looked_up_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** A delivery being scanned in. Becomes a supplier bill when posted. */
+export const receivings = pgTable("receivings", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  supplierId: integer("supplier_id").notNull().references(() => suppliers.id),
+  supplierInvoiceNo: text("supplier_invoice_no").notNull(),
+  invoiceDate: text("invoice_date").notNull(),
+  dueDate: text("due_date").notNull(),
+  ratesIncludeVat: boolean("rates_include_vat").notNull().default(true),
+  status: text("status").notNull().default("draft"), // draft | posted | discarded
+  billId: integer("bill_id"),
+  createdBy: integer("created_by").notNull(),
+  createdAt: createdAt(),
+}, (t) => [index("idx_receivings_org_status").on(t.orgId, t.status)]);
+
+export const receivingLines = pgTable("receiving_lines", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  receivingId: integer("receiving_id").notNull().references(() => receivings.id),
+  variantId: integer("variant_id").notNull().references(() => variants.id),
+  qty: integer("qty").notNull(),
+  /** Rate per unit as printed on the supplier invoice. Null until typed. */
+  unitRateCents: money("unit_rate_cents"),
+}, (t) => [uniqueIndex("uq_receiving_lines_variant").on(t.receivingId, t.variantId)]);
+
+/** Short-lived link that lets a phone upload a product photo without signing in. */
+export const photoTokens = pgTable("photo_tokens", {
+  token: text("token").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  productId: integer("product_id").notNull().references(() => products.id),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+});

@@ -19,6 +19,15 @@ async function main() {
     await db.execute(sql.raw(`alter table public."${tablename}" enable row level security`));
   }
   console.log(`✓ RLS enabled (deny-all to anon/authenticated) on ${tables.length} tables`);
+  // Public bucket for product photos (writes go through the server with the service key).
+  try {
+    await db.execute(sql`insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+      values ('product-images', 'product-images', true, 5242880, array['image/jpeg','image/png','image/webp'])
+      on conflict (id) do nothing`);
+    console.log("✓ storage bucket product-images");
+  } catch (e) {
+    console.warn("! could not create the product-images bucket:", (e as Error).message);
+  }
   process.exit(0);
 }
 

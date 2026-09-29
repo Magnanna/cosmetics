@@ -190,7 +190,7 @@ export async function removeStock(
 }
 
 /** Unit cost of the most recent real lot, for estimating deficits. 0 if never stocked. */
-async function lastUnitCostCents(db: DbOrTx, variantId: number, locationId: number): Promise<number> {
+export async function lastUnitCostCents(db: DbOrTx, variantId: number, locationId: number): Promise<number> {
   const { orgId } = ctx();
   const [lot] = await db
     .select({ qty: stockLots.qty, total: stockLots.totalCostCents })

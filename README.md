@@ -30,3 +30,27 @@ Everything is a journal. `src/lib/ledger.ts` is the only writer to `journal_entr
 ## Security model
 
 The app talks to Postgres directly from the server. Every public table has RLS enabled with no policies, so the Supabase REST API (anon/authenticated keys) can read nothing. Org scoping is enforced in code: every query filters by `org_id` from the signed-in member's session.
+
+## Desktop till (Tauri)
+
+The till runs the web app inside a small desktop shell that can print raw ESC/POS to the XP-Q80 and open the cash drawer.
+
+```bash
+npm run dev          # web app on :3000 (keep running)
+npm run till:dev     # opens the desktop till at /till
+npm run till:build   # installers: .msi/.exe on Windows, .dmg on macOS
+```
+
+On the till, click **Printer** in the top bar, pick the XP-Q80, and print a test slip. Needs Rust (`rustup`). Windows installers must be built on Windows (the icon step needs Windows' resource compiler). Before shipping, point `app.windows[0].url` in `src-tauri/tauri.conf.json` at the deployed site.
+
+## Receiving stock by scanning
+
+Stock → Receive stock → start a delivery (supplier, invoice number, VAT mode) → scan.
+
+- Known barcode: quantity goes up by one per scan (or type the quantity).
+- New barcode: looked up in the shared barcode library, then Open Beauty Facts / Open Food Facts, then UPCitemdb (free tier, ~100/day). Name, brand and photo are prefilled; staff set retail and wholesale prices (they apply immediately) and the cost from the invoice. It can be added as a new shade of an existing product.
+- No barcode: "No barcode" creates the product with an in-store EAN-13 for labels.
+- Photos: "Add photo" shows a QR code; the phone takes the picture and it appears on the till. Needs `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`. On a local dev server the QR uses this computer's network address, so the phone must be on the same Wi-Fi.
+- Saving the delivery posts a normal supplier bill (stock in, Accounts Payable up). Every line needs a cost first.
+
+Barcode lookups use data from Open Beauty Facts and Open Food Facts (ODbL) and UPCitemdb.

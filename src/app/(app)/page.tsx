@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { and, count, eq, sql } from "drizzle-orm";
 import { db, priceChangeRequests, products, stockLots, variants } from "@/db";
 import { requirePage } from "@/lib/auth";
@@ -7,6 +8,7 @@ import { Card, Money } from "@/components/ui";
 
 export default async function TodayPage() {
   const s = await requirePage(null);
+  if (s.role === "cashier") redirect("/till");
   const orgId = s.org.id;
   const [[productCount], [stock], lowStock, [pending]] = await Promise.all([
     db.select({ n: count() }).from(products).where(and(eq(products.orgId, orgId), eq(products.archived, false))),

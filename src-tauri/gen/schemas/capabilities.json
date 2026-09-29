@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Lets the Kenfri web app (local dev and the deployed site) call the printer commands.","remote":{"urls":["http://localhost:3000/*","https://*.vercel.app/*"]},"local":true,"windows":["main"],"permissions":["core:default"]}}

@@ -1,12 +1,16 @@
-import type { Tx } from "@/db";
+import { eq } from "drizzle-orm";
+import { stockAdjustments, type Tx } from "@/db";
 import { SYS } from "./coa";
-import { addStock, removeStock } from "./inventory";
+import { ctx } from "./context";
+import { addStock, defaultLocationId, lastUnitCostCents, removeStock } from "./inventory";
 import { acct, postEntry, signedPair, type PostLine } from "./ledger";
 
 /**
  * Stock events that aren't sales or bills. Each posts its journal in the
  * same transaction as the stock movement.
  */
+
+export class StockError extends Error {}
 
 /** Go-live stock count: Dr Inventory / Cr Opening Balance Equity. */
 export async function postOpeningStock(
@@ -25,27 +29,59 @@ export async function postOpeningStock(
 
 export type AdjustmentReason = "damaged" | "lost" | "found" | "owner_use" | "other";
 
+export const ADJUSTMENT_REASONS: Record<AdjustmentReason, string> = {
+  damaged: "Damaged",
+  lost: "Lost or stolen",
+  found: "Found",
+  owner_use: "Owner took for personal use",
+  other: "Other",
+};
+
+/** Adjustments worth more than this need the owner (KES 1,000). */
+export const ADJUSTMENT_OWNER_LIMIT_CENTS = 100_000;
+
 /**
- * Manual stock adjustment. Negative qty removes stock at FIFO cost
- * (Dr Stock Loss or Drawings / Cr Inventory). Positive "found" stock comes
- * back at the latest cost supplied by the caller (Dr Inventory / Cr Stock Loss).
+ * Manual stock adjustment with a reason.
+ * Out: removes at FIFO cost → Dr Stock Loss (or Drawings for owner use) / Cr Inventory.
+ * In ("found"): comes back at the last price paid → Dr Inventory / Cr Stock Loss.
  */
-export async function postStockAdjustment(
+export async function recordStockAdjustment(
   tx: Tx,
-  p: { variantId: number; qtyDelta: number; reason: AdjustmentReason; date: string; adjustmentId?: number; foundUnitCostCents?: number }
-): Promise<number> {
-  if (p.qtyDelta === 0) throw new Error("Adjustment quantity can't be zero.");
+  p: { variantId: number; qtyDelta: number; reason: AdjustmentReason; note?: string | null; date: string }
+): Promise<{ adjustmentId: number; costCents: number }> {
+  const { orgId, memberId, role } = ctx();
+  if (!Number.isInteger(p.qtyDelta) || p.qtyDelta === 0) throw new StockError("Enter how many units to add or remove.");
+  if (p.reason === "found" && p.qtyDelta < 0) throw new StockError("“Found” adds stock — use a positive number.");
+  if (p.reason !== "found" && p.reason !== "other" && p.qtyDelta > 0) throw new StockError(`“${ADJUSTMENT_REASONS[p.reason]}” removes stock — use a negative number.`);
+  if (p.reason === "other" && !p.note?.trim()) throw new StockError("Add a note explaining the adjustment.");
+
+  const locationId = await defaultLocationId(tx);
+  const [adj] = await tx
+    .insert(stockAdjustments)
+    .values({ orgId, variantId: p.variantId, qtyDelta: p.qtyDelta, reason: p.reason, note: p.note?.trim() || null, memberId })
+    .returning({ id: stockAdjustments.id });
+
   const inv = await acct(tx, SYS.INVENTORY);
   const loss = await acct(tx, p.reason === "owner_use" ? SYS.DRAWINGS : SYS.STOCK_LOSS);
+  let costCents: number;
   let lines: PostLine[];
   if (p.qtyDelta < 0) {
-    const { costCents } = await removeStock(tx, { variantId: p.variantId, qty: -p.qtyDelta, date: p.date, sourceType: "adjustment", sourceId: p.adjustmentId });
+    ({ costCents } = await removeStock(tx, { variantId: p.variantId, qty: -p.qtyDelta, date: p.date, sourceType: "adjustment", sourceId: adj.id, locationId }));
     lines = signedPair(costCents, loss, inv, `Stock adjustment: ${p.reason}`);
   } else {
-    const cost = p.qtyDelta * (p.foundUnitCostCents ?? 0);
-    const { deficitVarianceCents } = await addStock(tx, { variantId: p.variantId, qty: p.qtyDelta, totalCostCents: cost, date: p.date, sourceType: "adjustment", sourceId: p.adjustmentId });
-    lines = [...signedPair(cost, inv, loss, `Stock adjustment: ${p.reason}`), ...signedPair(deficitVarianceCents, await acct(tx, SYS.COGS), inv, "Settle oversold stock")];
+    costCents = p.qtyDelta * (await lastUnitCostCents(tx, p.variantId, locationId));
+    const { deficitVarianceCents } = await addStock(tx, { variantId: p.variantId, qty: p.qtyDelta, totalCostCents: costCents, date: p.date, sourceType: "adjustment", sourceId: adj.id, locationId });
+    lines = [...signedPair(costCents, inv, loss, `Stock adjustment: ${p.reason}`), ...signedPair(deficitVarianceCents, await acct(tx, SYS.COGS), inv, "Settle oversold stock")];
   }
-  if (lines.length === 0) return 0; // zero-cost item: stock moved, nothing to post
-  return postEntry(tx, { date: p.date, memo: `Stock adjustment (${p.reason})`, sourceType: "stock_adjustment", sourceId: p.adjustmentId, lines });
+
+  if (costCents > ADJUSTMENT_OWNER_LIMIT_CENTS && role !== "owner") {
+    throw new StockError(`This adjustment is worth KES ${(costCents / 100).toLocaleString("en-KE")}. Adjustments over KES 1,000 need the owner.`);
+  }
+
+  let journalEntryId: number | null = null;
+  if (lines.length > 0) {
+    journalEntryId = await postEntry(tx, { date: p.date, memo: `Stock adjustment (${ADJUSTMENT_REASONS[p.reason]})`, sourceType: "stock_adjustment", sourceId: adj.id, lines });
+  }
+  await tx.update(stockAdjustments).set({ costCents, journalEntryId }).where(eq(stockAdjustments.id, adj.id));
+  return { adjustmentId: adj.id, costCents };
 }

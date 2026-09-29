@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Lets the Kenfri web app (local dev and the deployed site) call the printer commands.",
+  "windows": ["main"],
+  "remote": {
+    "urls": ["http://localhost:3000/*", "https://*.vercel.app/*"]
+  },
+  "permissions": ["core:default"]
+}

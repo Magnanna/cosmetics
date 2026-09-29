@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { and, count, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
-import { db, brands, categories, priceChangeRequests, products, variantBarcodes, variants } from "@/db";
+import { db, brands, categories, products, variantBarcodes, variants } from "@/db";
 import { audit, ForbiddenError, withSession } from "@/lib/auth";
 import { inStoreEan13 } from "@/lib/barcode";
 import { can } from "@/lib/permissions";
@@ -52,7 +52,7 @@ export async function createProduct(raw: ProductInput): Promise<{ error?: string
 
   try {
     return await withSession("catalog.edit", async (s) => {
-      const ownerPrices = can(s.role, "catalog.set_prices");
+      // Prices on new products apply immediately for owner and staff (owner decision, 30 Sep 2026).
       const canStock = can(s.role, "stock.receive");
       const date = nairobiDate();
 
@@ -99,25 +99,12 @@ export async function createProduct(raw: ProductInput): Promise<{ error?: string
               productId: product.id,
               option1Value: input.option1Name ? v.option1Value : null,
               option2Value: input.option2Name ? v.option2Value : null,
-              // Staff suggestions wait for the owner; the variant can't sell at a price nobody approved.
-              retailPriceCents: ownerPrices ? v.retailPriceCents : 0,
-              wholesalePriceCents: ownerPrices ? v.wholesalePriceCents : 0,
+              retailPriceCents: v.retailPriceCents,
+              wholesalePriceCents: v.wholesalePriceCents,
               reorderLevel: v.reorderLevel,
               swatchHex: v.swatchHex,
             })
             .returning({ id: variants.id });
-
-          if (!ownerPrices) {
-            const requests = [
-              { field: "retail", newCents: v.retailPriceCents },
-              { field: "wholesale", newCents: v.wholesalePriceCents },
-            ].filter((r) => r.newCents > 0);
-            if (requests.length) {
-              await tx.insert(priceChangeRequests).values(
-                requests.map((r) => ({ orgId: s.org.id, variantId: row.id, field: r.field, oldCents: 0, newCents: r.newCents, reason: "New product", requestedBy: s.member.id }))
-              );
-            }
-          }
 
           const code = v.barcode || (v.generateBarcode ? await nextInStoreBarcode(tx, s.org.id) : null);
           if (code) {

@@ -3,13 +3,28 @@ import { can, ROLE_LABELS, type Permission } from "@/lib/permissions";
 import { Sidebar, type NavGroup } from "@/components/sidebar";
 
 const NAV: { label: string; items: { href: string; label: string; perm: Permission | null }[] }[] = [
-  { label: "Home", items: [{ href: "/", label: "Today", perm: null }] },
+  {
+    label: "Home",
+    items: [
+      { href: "/", label: "Today", perm: null },
+      { href: "/till", label: "Open the till", perm: "till.sell" },
+    ],
+  },
   {
     label: "Products",
     items: [
       { href: "/products", label: "Catalogue", perm: "catalog.view" },
       { href: "/products/brands", label: "Brands", perm: "catalog.edit" },
       { href: "/products/categories", label: "Categories", perm: "catalog.edit" },
+    ],
+  },
+  {
+    label: "Stock",
+    items: [
+      { href: "/stock/receive", label: "Receive stock", perm: "stock.receive" },
+      { href: "/stock/bills", label: "Supplier invoices", perm: "stock.receive" },
+      { href: "/stock/counts", label: "Stock take", perm: "stock.count" },
+      { href: "/stock/adjust", label: "Adjust stock", perm: "stock.receive" },
       { href: "/suppliers", label: "Suppliers", perm: "suppliers.edit" },
     ],
   },
