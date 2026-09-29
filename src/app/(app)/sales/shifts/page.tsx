@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { desc, eq, sql } from "drizzle-orm";
-import { db, members, sales, shifts } from "@/db";
+import { db, members, shifts } from "@/db";
 import { requirePage } from "@/lib/auth";
 import { EmptyState, Money, PageHeader, Pill } from "@/components/ui";
 
@@ -12,8 +12,8 @@ export default async function ShiftsPage() {
     .select({
       sh: shifts,
       opener: members.name,
-      sales: sql<string>`(select coalesce(sum(${sales.totalCents}),0) from ${sales} where ${sales.shiftId} = ${shifts.id})`,
-      count: sql<number>`(select count(*)::int from ${sales} where ${sales.shiftId} = ${shifts.id})`,
+      sales: sql<string>`(select coalesce(sum(s.total_cents),0) from sales s where s.shift_id = "shifts"."id")`,
+      count: sql<number>`(select count(*)::int from sales s where s.shift_id = "shifts"."id")`,
     })
     .from(shifts)
     .leftJoin(members, eq(members.id, shifts.openedBy))

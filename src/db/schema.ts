@@ -704,3 +704,63 @@ export const smsLog = pgTable("sms_log", {
   error: text("error"),
   createdAt: createdAt(),
 }, (t) => [index("idx_sms_org_time").on(t.orgId, t.createdAt)]);
+
+/* ---------------- Week 4: money, reconciliation ---------------- */
+
+/** Back-office spending (rent, electricity…) paid from cash at hand, M-Pesa or the bank. */
+export const expenses = pgTable("expenses", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  date: text("date").notNull(),
+  accountId: integer("account_id").notNull().references(() => accounts.id),
+  amountCents: money("amount_cents").notNull(),
+  paidFrom: text("paid_from").notNull(), // cash_at_hand | mpesa | bank
+  description: text("description").notNull(),
+  reference: text("reference"),
+  journalEntryId: integer("journal_entry_id"),
+  memberId: integer("member_id"),
+  createdAt: createdAt(),
+}, (t) => [index("idx_expenses_org_date").on(t.orgId, t.date)]);
+
+/** Moving money between cash at hand, M-Pesa and the bank. */
+export const moneyTransfers = pgTable("money_transfers", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  date: text("date").notNull(),
+  fromCode: text("from_code").notNull(),
+  toCode: text("to_code").notNull(),
+  amountCents: money("amount_cents").notNull(),
+  feeCents: money("fee_cents").notNull().default(0),
+  note: text("note"),
+  journalEntryId: integer("journal_entry_id"),
+  memberId: integer("member_id"),
+  createdAt: createdAt(),
+}, (t) => [index("idx_transfers_org_date").on(t.orgId, t.date)]);
+
+export const mpesaImports = pgTable("mpesa_imports", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  fileName: text("file_name").notNull(),
+  rowCount: integer("row_count").notNull(),
+  fromDate: text("from_date"),
+  toDate: text("to_date"),
+  memberId: integer("member_id"),
+  createdAt: createdAt(),
+});
+
+/** One line of the M-Pesa till statement, matched against codes typed at the till. */
+export const mpesaStatementLines = pgTable("mpesa_statement_lines", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  importId: integer("import_id").notNull().references(() => mpesaImports.id),
+  code: text("code").notNull(),
+  completedAt: text("completed_at").notNull(),
+  details: text("details"),
+  paidInCents: money("paid_in_cents").notNull().default(0),
+  withdrawnCents: money("withdrawn_cents").notNull().default(0),
+  /** matched | amount_mismatch | not_in_pos | withdrawal */
+  status: text("status").notNull(),
+  saleId: integer("sale_id"),
+  customerPaymentId: integer("customer_payment_id"),
+  posAmountCents: money("pos_amount_cents"),
+}, (t) => [uniqueIndex("uq_mpesa_lines_org_code").on(t.orgId, t.code), index("idx_mpesa_lines_import").on(t.importId)]);

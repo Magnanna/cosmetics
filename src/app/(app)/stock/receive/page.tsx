@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
-import { db, receivingLines, receivings, suppliers } from "@/db";
+import { db, receivings, suppliers } from "@/db";
 import { requirePage } from "@/lib/auth";
 import { nairobiDate } from "@/lib/time";
 import { EmptyState, PageHeader } from "@/components/ui";
@@ -16,7 +16,7 @@ export default async function ReceivePage() {
       .select({
         r: receivings,
         supplier: suppliers.name,
-        units: sql<number>`coalesce((select sum(${receivingLines.qty})::int from ${receivingLines} where ${receivingLines.receivingId} = ${receivings.id}), 0)`,
+        units: sql<number>`coalesce((select sum(rl.qty)::int from receiving_lines rl where rl.receiving_id = "receivings"."id"), 0)`,
       })
       .from(receivings)
       .innerJoin(suppliers, eq(suppliers.id, receivings.supplierId))

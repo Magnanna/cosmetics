@@ -36,10 +36,25 @@ const NAV: { label: string; items: { href: string; label: string; perm: Permissi
       { href: "/suppliers", label: "Suppliers", perm: "suppliers.edit" },
     ],
   },
-  { label: "Money", items: [{ href: "/books/accounts", label: "Chart of accounts", perm: "books.view" }] },
+  {
+    label: "Money",
+    items: [
+      { href: "/money/transfers", label: "Cash, M-Pesa & bank", perm: "books.post" },
+      { href: "/money/expenses", label: "Expenses", perm: "books.post" },
+      { href: "/money/mpesa", label: "M-Pesa check", perm: "books.view" },
+      { href: "/reports", label: "Reports", perm: "reports.view" },
+      { href: "/reports/tot", label: "Turnover Tax", perm: "reports.view" },
+      { href: "/money/journal", label: "Manual journal", perm: "books.post" },
+      { href: "/books/accounts", label: "Chart of accounts", perm: "books.view" },
+    ],
+  },
   {
     label: "Settings",
     items: [
+      { href: "/settings/shop", label: "Shop settings", perm: "settings.edit" },
+      { href: "/settings/team", label: "Team", perm: "team.manage" },
+      { href: "/settings/opening", label: "Opening balances", perm: "books.post" },
+      { href: "/settings/books", label: "Close the books", perm: "books.lock" },
       { href: "/settings/pin", label: "My PIN", perm: null },
       { href: "/settings/messages", label: "SMS messages", perm: "settings.edit" },
     ],

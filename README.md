@@ -54,3 +54,22 @@ Stock → Receive stock → start a delivery (supplier, invoice number, VAT mode
 - Saving the delivery posts a normal supplier bill (stock in, Accounts Payable up). Every line needs a cost first.
 
 Barcode lookups use data from Open Beauty Facts and Open Food Facts (ODbL) and UPCitemdb.
+
+## Go-live checklist
+
+1. **Keys in `.env.local`** (and in Vercel → Project → Settings → Environment Variables when deployed):
+   `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (staff logins, photos),
+   `AT_USERNAME` / `AT_API_KEY` / `AT_SENDER_ID` (SMS), `NEXT_PUBLIC_APP_URL` (receipt and photo links), `CRON_SECRET` (daily summary).
+2. **Owner:** Settings → My PIN; Settings → Shop settings (owner's phone gets the 9 pm summary SMS, receipt address, KRA PIN).
+3. **Team:** Settings → Team → one login per person with the right role.
+4. **Opening balances** (Settings → Opening balances), dated the day before go-live: cash at hand, M-Pesa till balance, bank balance, unpaid supplier invoices, what credit customers owe.
+5. **Stock:** scan every product in through Stock → Receive stock (or the catalogue form with “Units in shop now” and cost).
+6. **Till PC:** install the desktop app, pick the XP-Q80 under Printer, print a test slip, open the drawer.
+7. **Monthly:** import the M-Pesa statement (Money → M-Pesa check), record and pay Turnover Tax by the 20th, then Settings → Close the books.
+
+## Deploying (Vercel)
+
+`vercel.json` pins the app to Frankfurt (`fra1`, next to the Supabase database) and schedules the owner's daily summary at 18:00 UTC (21:00 Nairobi).
+After the first deploy, set `app.windows[0].url` in `src-tauri/tauri.conf.json` to the live `/till` URL and add that domain to `src-tauri/capabilities/default.json`, then build the desktop installer on the till PC with `npm run till:build`.
+
+Tests: `npm test` (pure logic) and `npm run test:db` (against the database, always rolled back, one file at a time).

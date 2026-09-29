@@ -48,7 +48,7 @@ export default async function AccountsPage() {
                   <tr key={r.id} className="hairline-t">
                     <td className="px-4 py-2.5 w-16 tnum text-ink-400">{r.code}</td>
                     <td className="px-4 py-2.5">
-                      <div className="font-medium">{r.name}</div>
+                      <a href={`/reports/ledger/${r.id}?from=2000-01-01`} className="font-medium hover:underline">{r.name}</a>
                       <div className="text-[12px] text-ink-400">{r.description}</div>
                     </td>
                     <td className="px-4 py-2.5 text-right whitespace-nowrap"><Money cents={balance(r)} /></td>

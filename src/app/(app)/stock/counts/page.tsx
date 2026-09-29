@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
-import { db, brands, categories, members, stockTakeLines, stockTakes } from "@/db";
+import { db, brands, categories, members, stockTakes } from "@/db";
 import { requirePage } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { Money, PageHeader, Pill } from "@/components/ui";
@@ -22,8 +22,8 @@ export default async function CountsPage() {
       .select({
         t: stockTakes,
         who: members.name,
-        total: sql<number>`(select count(*)::int from ${stockTakeLines} where ${stockTakeLines.stockTakeId} = ${stockTakes.id})`,
-        counted: sql<number>`(select count(*)::int from ${stockTakeLines} where ${stockTakeLines.stockTakeId} = ${stockTakes.id} and ${stockTakeLines.countedQty} is not null)`,
+        total: sql<number>`(select count(*)::int from stock_take_lines x where x.stock_take_id = "stock_takes"."id")`,
+        counted: sql<number>`(select count(*)::int from stock_take_lines x where x.stock_take_id = "stock_takes"."id" and x.counted_qty is not null)`,
       })
       .from(stockTakes)
       .leftJoin(members, eq(members.id, stockTakes.startedBy))

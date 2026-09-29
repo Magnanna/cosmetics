@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { and, asc, eq, sql } from "drizzle-orm";
-import { db, brands, categories, products, stockLots, variants } from "@/db";
+import { db, brands, categories, products, variants } from "@/db";
 import { requirePage, inOrg } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { Button, EmptyState, Money, PageHeader, Pill } from "@/components/ui";
@@ -18,7 +18,7 @@ export default async function ProductsPage() {
         minPrice: sql<number>`min(${variants.retailPriceCents})::bigint`,
         maxPrice: sql<number>`max(${variants.retailPriceCents})::bigint`,
         unpriced: sql<number>`count(distinct ${variants.id}) filter (where ${variants.retailPriceCents} = 0)::int`,
-        onHand: sql<number>`coalesce((select sum(${stockLots.remainingQty}) from ${stockLots} where ${stockLots.variantId} in (select v2.id from variants v2 where v2.product_id = ${products.id})), 0)::int`,
+        onHand: sql<number>`coalesce((select sum(l.remaining_qty) from stock_lots l join variants v2 on v2.id = l.variant_id where v2.product_id = "products"."id"), 0)::int`,
       })
       .from(products)
       .leftJoin(brands, eq(products.brandId, brands.id))
