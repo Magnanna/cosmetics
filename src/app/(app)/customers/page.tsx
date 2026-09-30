@@ -43,11 +43,11 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
     <>
       <PageHeader title="Customers" subtitle="Everyone who has bought, by phone number." />
       <form className="flex flex-wrap gap-2 mb-4">
-        <input name="q" defaultValue={q} placeholder="Name or phone" className="h-9 w-64 rounded-md bg-white px-3 text-[14px] border-[0.5px] border-ink-200" />
+        <input name="q" defaultValue={q} placeholder="Name or phone" className="h-9 w-64 rounded-lg bg-white px-3 text-[14px] border border-ink-200" />
         {type && <input type="hidden" name="type" value={type} />}
         <div className="flex gap-1.5">
           {filters.map((f) => (
-            <Link key={f.key} href={`/customers?${new URLSearchParams({ ...(q ? { q } : {}), ...(f.key ? { type: f.key } : {}) })}`} className={`h-9 px-3 rounded-full text-[13px] grid place-items-center border-[0.5px] ${type === f.key ? "bg-brand-tint text-brand-700 border-transparent font-semibold" : "bg-white border-ink-200 text-ink-600"}`}>
+            <Link key={f.key} href={`/customers?${new URLSearchParams({ ...(q ? { q } : {}), ...(f.key ? { type: f.key } : {}) })}`} className={`h-9 px-3 rounded-full text-[13px] grid place-items-center border ${type === f.key ? "bg-brand-tint text-brand-700 border-transparent font-semibold" : "bg-white border-ink-200 text-ink-600"}`}>
               {f.label}
             </Link>
           ))}

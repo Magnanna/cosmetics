@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
-  Kenfri design language — Zeno "Apple calm" tokens with a Masterpiece red (deep wine) accent on a
+  Kenfri design language — the Zeno admin portal ("Apple calm") tokens, surfaces and motion with a Masterpiece red (deep wine) accent on a
   Stripe-style cool white canvas (#F6F9FC). Text on the accent is white (brand-ink).
   Hairline separators, 12px cards, big quiet tabular numerals for money,
   one restrained accent used only for primary actions and active states.
@@ -12,7 +12,10 @@
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
 
   --color-ink-900: #1d1d1f;
+  --color-ink-800: #333336;
+  --color-ink-700: #424245;
   --color-ink-600: #515154;
+  --color-ink-500: #6e6e73;
   --color-ink-400: #86868b;
   --color-ink-200: #d5dbe3;
   --color-ink-100: #e3e8ee;
@@ -31,7 +34,15 @@
   --color-bad: #c0392b;
 
   --radius-card: 12px;
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+  /* shadcn-style tokens used by the animated sidebar (ported from Zeno). */
+  --color-background: #ffffff;
+  --color-foreground: #1d1d1f;
+  --color-muted: #f6f9fc;
+  --color-muted-foreground: #86868b;
+  --color-border: #e3e8ee;
+  --color-ring: #5a2132;
 }
 
 html {
@@ -46,12 +57,26 @@ html {
 .hairline-b { border-bottom: 0.5px solid var(--color-ink-200); }
 .hairline-t { border-top: 0.5px solid var(--color-ink-200); }
 
+/* Zeno admin surface: white, 12px radius, 1px hairline, barely-there shadow. */
 .card {
   background: white;
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-card);
-  border: 0.5px solid var(--color-ink-100);
+  border: 1px solid var(--color-ink-200);
 }
+
+/* Zeno admin tables: tinted header band, quiet dividers, soft row hover. */
+.card thead tr { background: var(--color-ink-50); }
+.card thead th {
+  color: var(--color-ink-600);
+  font-weight: 500;
+  border-bottom: 1px solid var(--color-ink-200);
+}
+.card tbody tr.hairline-t,
+.card tfoot tr.hairline-t { border-top: 1px solid var(--color-ink-100); }
+.card thead + tbody > tr:first-child.hairline-t { border-top: 0; }
+.card tbody tr { transition: background-color 0.15s; }
+.card tbody tr:hover { background: color-mix(in srgb, var(--color-ink-50) 60%, transparent); }
 
 .money-lg {
   font-size: clamp(1.1rem, 1.7vw + 0.55rem, 1.5rem);
@@ -68,9 +93,27 @@ html {
   -webkit-backdrop-filter: blur(20px) saturate(1.4);
 }
 
+@keyframes zeno-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes zeno-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+/* Pages settle in the way Zeno's admin screens do. */
+.page-enter { animation: zeno-rise 0.28s cubic-bezier(0.23, 1, 0.32, 1) both; }
+@media (prefers-reduced-motion: reduce) { .page-enter { animation: none; } }
+
 :focus-visible { outline: 2px solid var(--color-brand-ring); outline-offset: 2px; }
 
 @media print {
   .no-print { display: none !important; }
   html, body { background: white; }
+}
+
+/* The app shell scrolls inside <main>; let printed reports flow across pages. */
+@media print {
+  [data-slot="sidebar-wrapper"] main,
+  [data-slot="sidebar-wrapper"] main > div { height: auto !important; overflow: visible !important; }
 }

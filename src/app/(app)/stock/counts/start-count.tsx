@@ -24,11 +24,11 @@ export function StartCount({ categories, brands }: { categories: { id: number; n
 
   return (
     <div className="card p-5 grid gap-3">
-      <h2 className="text-[15px] font-semibold">Start a count</h2>
+      <h2 className="text-[13.5px] font-semibold">Start a count</h2>
       <p className="text-[13px] text-ink-400">Counting a few categories each week is easier than the whole shop at once.</p>
       <div className="grid grid-cols-3 gap-1.5">
         {(["categories", "brands", "all"] as Kind[]).map((k) => (
-          <button key={k} onClick={() => { setKind(k); setPicked(new Set()); }} className={`h-9 rounded-lg text-[13px] font-medium cursor-pointer border-[0.5px] ${kind === k ? "bg-brand text-brand-ink border-transparent" : "bg-white border-ink-200 hover:bg-ink-50"}`}>
+          <button key={k} onClick={() => { setKind(k); setPicked(new Set()); }} className={`h-9 rounded-lg text-[13px] font-medium cursor-pointer border ${kind === k ? "bg-brand text-brand-ink border-transparent" : "bg-white border-ink-200 hover:bg-ink-50"}`}>
             {k === "all" ? "Everything" : k === "categories" ? "Categories" : "Brands"}
           </button>
         ))}

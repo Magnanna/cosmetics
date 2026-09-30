@@ -1,6 +1,8 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import { prepareLogo } from "./logo-prepare";
+import { toBase64 } from "./logo-raster";
 
 export const IMAGE_BUCKET = "product-images";
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -55,4 +57,27 @@ export async function copyRemoteImage(orgId: number, productId: number, url: str
   } catch {
     return null;
   }
+}
+
+export interface SavedLogo {
+  url: string;
+  /** Base64 ESC/POS raster (GS v 0) for the thermal printer. */
+  print: string;
+}
+
+/**
+ * Shop logo: a trimmed PNG (transparency kept) for screens and the online
+ * receipt, plus a black-and-white raster for the thermal printer.
+ */
+export async function saveOrgLogo(orgId: number, bytes: Uint8Array, contentType: string): Promise<SavedLogo> {
+  if (!TYPES[contentType]) throw new ImageError("Use a PNG, JPG or WebP logo.");
+  if (bytes.byteLength > MAX_BYTES) throw new ImageError("That logo is bigger than 5 MB.");
+  const { png, raster } = await prepareLogo(bytes).catch(() => {
+    throw new ImageError("That file couldn't be read as an image.");
+  });
+  const path = `${orgId}/logo-${randomBytes(6).toString("hex")}.png`;
+  const s = storage();
+  const { error } = await s.upload(path, png, { contentType: "image/png", upsert: false, cacheControl: "31536000" });
+  if (error) throw new ImageError(`Couldn't save the logo: ${error.message}`);
+  return { url: s.getPublicUrl(path).data.publicUrl, print: toBase64(raster) };
 }

@@ -47,16 +47,16 @@ export default async function SalesHistoryPage({ searchParams }: { searchParams:
     <>
       <PageHeader title="Sales" subtitle={q && /^KF-?\d+$/i.test(q) ? `Receipt ${q.toUpperCase()}` : `${from} to ${to} · ${rows.length} sale${rows.length === 1 ? "" : "s"} · KES ${(total / 100).toLocaleString("en-KE", { minimumFractionDigits: 2 })}`} />
       <form className="flex flex-wrap items-end gap-2 mb-5">
-        <label className="grid gap-1 text-[12px] text-ink-400">Search<input name="q" defaultValue={q} placeholder="Receipt, phone, M-Pesa code, name" className="h-9 w-72 rounded-md bg-white px-3 text-[13.5px] border-[0.5px] border-ink-200" /></label>
-        <label className="grid gap-1 text-[12px] text-ink-400">From<input type="date" name="from" defaultValue={from} className="h-9 rounded-md bg-white px-2 text-[13.5px] border-[0.5px] border-ink-200" /></label>
-        <label className="grid gap-1 text-[12px] text-ink-400">To<input type="date" name="to" defaultValue={to} className="h-9 rounded-md bg-white px-2 text-[13.5px] border-[0.5px] border-ink-200" /></label>
+        <label className="grid gap-1 text-[12px] text-ink-400">Search<input name="q" defaultValue={q} placeholder="Receipt, phone, M-Pesa code, name" className="h-9 w-72 rounded-lg bg-white px-3 text-[13.5px] border border-ink-200" /></label>
+        <label className="grid gap-1 text-[12px] text-ink-400">From<input type="date" name="from" defaultValue={from} className="h-9 rounded-lg bg-white px-2 text-[13.5px] border border-ink-200" /></label>
+        <label className="grid gap-1 text-[12px] text-ink-400">To<input type="date" name="to" defaultValue={to} className="h-9 rounded-lg bg-white px-2 text-[13.5px] border border-ink-200" /></label>
         <label className="grid gap-1 text-[12px] text-ink-400">Cashier
-          <select name="cashier" defaultValue={sp.cashier ?? ""} className="h-9 rounded-md bg-white px-2 text-[13.5px] border-[0.5px] border-ink-200">
+          <select name="cashier" defaultValue={sp.cashier ?? ""} className="h-9 rounded-lg bg-white px-2 text-[13.5px] border border-ink-200">
             <option value="">Everyone</option>
             {staff.map((m) => <option key={m.id} value={m.id}>{m.name || m.email}</option>)}
           </select>
         </label>
-        <button className="h-9 px-4 rounded-md bg-brand text-brand-ink text-[13px] font-medium cursor-pointer">Show</button>
+        <button className="h-9 px-4 rounded-lg bg-brand text-brand-ink text-[13px] font-medium cursor-pointer">Show</button>
       </form>
       <div className="card overflow-x-auto">
         <table className="w-full text-[13.5px]">

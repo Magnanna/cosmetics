@@ -35,6 +35,8 @@ export const orgs = pgTable("orgs", {
   address: text("address"),
   kraPin: text("kra_pin"),
   logoUrl: text("logo_url"),
+  /** Logo as a base64 ESC/POS raster for the thermal printer (made on upload). */
+  logoPrint: text("logo_print"),
   brandColor: text("brand_color").notNull().default("#5A2132"),
   timezone: text("timezone").notNull().default("Africa/Nairobi"),
   currency: text("currency").notNull().default("KES"),

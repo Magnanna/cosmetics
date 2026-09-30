@@ -25,7 +25,7 @@ export default async function SalesReportPage({ searchParams }: { searchParams: 
       <RangeForm from={from} to={to} extra={<input type="hidden" name="by" value={by} />} exportHref={`/reports/export?kind=sales&from=${from}&to=${to}&by=${by}`} />
       <div className="flex flex-wrap gap-1.5 mb-4">
         {(Object.keys(DIMENSIONS) as SalesDimension[]).map((d) => (
-          <Link key={d} href={`/reports/sales?from=${from}&to=${to}&by=${d}`} className={`h-8 px-3 rounded-full text-[12.5px] grid place-items-center border-[0.5px] ${d === by ? "bg-brand-tint text-brand-700 border-transparent font-semibold" : "bg-white border-ink-200 text-ink-600"}`}>{DIMENSIONS[d]}</Link>
+          <Link key={d} href={`/reports/sales?from=${from}&to=${to}&by=${d}`} className={`h-8 px-3 rounded-full text-[12.5px] grid place-items-center border ${d === by ? "bg-brand-tint text-brand-700 border-transparent font-semibold" : "bg-white border-ink-200 text-ink-600"}`}>{DIMENSIONS[d]}</Link>
         ))}
       </div>
       <div className="card overflow-x-auto">

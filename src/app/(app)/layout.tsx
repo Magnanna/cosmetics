@@ -1,6 +1,8 @@
 import { requirePage } from "@/lib/auth";
 import { can, ROLE_LABELS, type Permission } from "@/lib/permissions";
 import { Sidebar, type NavGroup } from "@/components/sidebar";
+import { PersistentSidebarProvider } from "@/components/motion/persistent-sidebar-provider";
+import { BrandStyle } from "@/components/brand-style";
 
 const NAV: { label: string; items: { href: string; label: string; perm: Permission | null }[] }[] = [
   {
@@ -68,11 +70,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const s = await requirePage(null);
   const groups: NavGroup[] = NAV.map((g) => ({ label: g.label, items: g.items.filter((i) => !i.perm || can(s.role, i.perm)) })).filter((g) => g.items.length);
   return (
-    <div className="md:flex min-h-screen">
-      <Sidebar groups={groups} shopName={s.org.name} userName={s.member.name || s.email} roleLabel={ROLE_LABELS[s.role]} />
-      <main className="flex-1 min-w-0">
-        <div className="mx-auto max-w-6xl w-full px-4 py-6 md:px-8 md:py-8">{children}</div>
+    <PersistentSidebarProvider storageKey="kenfri-sidebar" className="min-h-screen bg-ink-50 text-ink-900">
+      <BrandStyle color={s.org.brandColor} />
+      <Sidebar groups={groups} shopName={s.org.name} logoUrl={s.org.logoUrl} userName={s.member.name || s.email} roleLabel={ROLE_LABELS[s.role]} />
+      <main className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden">
+        <div className="flex-1 overflow-y-auto">
+          <div className="h-[76px] md:hidden shrink-0 no-print" />
+          <div className="page-enter mx-auto max-w-6xl w-full p-4 md:p-8">{children}</div>
+        </div>
       </main>
-    </div>
+    </PersistentSidebarProvider>
   );
 }

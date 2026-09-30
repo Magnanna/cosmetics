@@ -61,10 +61,10 @@ export default async function CustomerPage({ params, searchParams }: { params: P
               <form className="flex flex-wrap items-end justify-between gap-3 px-4 pt-4 pb-2">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Statement</span>
                 <span className="flex gap-2 items-center text-[13px]">
-                  <input type="date" name="from" defaultValue={from} className="h-8 rounded-md border-[0.5px] border-ink-200 px-2" />
+                  <input type="date" name="from" defaultValue={from} className="h-8 rounded-lg border border-ink-200 px-2" />
                   to
-                  <input type="date" name="to" defaultValue={to} className="h-8 rounded-md border-[0.5px] border-ink-200 px-2" />
-                  <button className="h-8 px-3 rounded-md border-[0.5px] border-ink-200 cursor-pointer">Show</button>
+                  <input type="date" name="to" defaultValue={to} className="h-8 rounded-lg border border-ink-200 px-2" />
+                  <button className="h-8 px-3 rounded-lg border border-ink-200 cursor-pointer">Show</button>
                 </span>
               </form>
               <table className="w-full text-[13.5px]">
@@ -135,7 +135,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
 
         <div className="grid gap-4">
           <Card className="p-5 grid gap-2">
-            <h2 className="text-[15px] font-semibold">Usually buys</h2>
+            <h2 className="text-[13.5px] font-semibold">Usually buys</h2>
             {favourites.length === 0 ? <p className="text-[13px] text-ink-400">Nothing in the last 90 days.</p> : favourites.map((f, i) => (
               <div key={i} className="flex justify-between text-[13.5px]"><span>{f.label}</span><span className="tnum text-ink-600">{f.units} items</span></div>
             ))}

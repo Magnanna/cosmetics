@@ -51,7 +51,7 @@ export function CountScreen({ stockTakeId, canCancel, lines: initial, picklist }
           <div className="flex items-center justify-between gap-3 px-4 py-3 hairline-b">
             <div className="flex gap-1.5">
               {(["todo", "all"] as const).map((f) => (
-                <button key={f} onClick={() => setFilter(f)} className={`h-8 px-3 rounded-full text-[12.5px] cursor-pointer border-[0.5px] ${filter === f ? "bg-brand-tint text-brand-700 border-transparent font-semibold" : "border-ink-200 text-ink-600"}`}>
+                <button key={f} onClick={() => setFilter(f)} className={`h-8 px-3 rounded-full text-[12.5px] cursor-pointer border ${filter === f ? "bg-brand-tint text-brand-700 border-transparent font-semibold" : "border-ink-200 text-ink-600"}`}>
                   {f === "todo" ? `Not counted (${lines.length - counted})` : `All (${lines.length})`}
                 </button>
               ))}
@@ -78,7 +78,7 @@ export function CountScreen({ stockTakeId, canCancel, lines: initial, picklist }
                       if (!Number.isInteger(n) || n < 0) return setFlash({ text: "Counts are whole numbers.", bad: true });
                       save(l.variantId, l.name, n, "set");
                     }}
-                    className="h-9 w-20 rounded-md bg-white px-2 text-right tnum border-[0.5px] border-ink-200 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-tint"
+                    className="h-9 w-20 rounded-lg bg-white px-2 text-right tnum border border-ink-200 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-tint"
                   />
                 </li>
               ))}

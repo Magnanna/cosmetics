@@ -68,7 +68,7 @@ export function PhoneCamera({ token, productName }: { token: string; productName
       ) : (
         <p className="text-[14px] text-ink-600">Put the product on a plain background, front label facing you.</p>
       )}
-      <label className="h-14 rounded-xl border-[0.5px] border-ink-200 grid place-items-center text-[16px] font-medium cursor-pointer bg-white">
+      <label className="h-14 rounded-xl border border-ink-200 grid place-items-center text-[16px] font-medium cursor-pointer bg-white">
         {preview ? "Retake" : "Take photo"}
         <input type="file" accept="image/*" capture="environment" onChange={onPick} className="sr-only" />
       </label>

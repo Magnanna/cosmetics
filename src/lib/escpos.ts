@@ -1,4 +1,5 @@
 import type { ReceiptData } from "./receipt";
+import { fromBase64 } from "./logo-raster";
 
 /**
  * ESC/POS receipt for 80mm printers (Xprinter XP-Q80): 48 characters per line
@@ -56,7 +57,15 @@ const money = (c: number) => `${c < 0 ? "-" : ""}${Math.floor(Math.abs(c) / 100)
 export function receiptBytes(r: ReceiptData, opts: { openDrawer: boolean; reprint: boolean; receiptUrl?: string }): Uint8Array {
   const b = new Builder();
   if (opts.openDrawer) b.drawer();
-  b.align("center").bold(true).size(true).line(r.shop.name).size(false).bold(false);
+  b.align("center");
+  if (r.shop.logoPrint) {
+    try {
+      b.raw(...fromBase64(r.shop.logoPrint)).line();
+    } catch {
+      /* a bad stored raster must never stop the receipt */
+    }
+  }
+  b.bold(true).size(true).line(r.shop.name).size(false).bold(false);
   if (r.shop.address) b.line(r.shop.address);
   if (r.shop.phone) b.line(`Tel ${r.shop.phone}`);
   if (r.shop.kraPin) b.line(`PIN ${r.shop.kraPin}`);

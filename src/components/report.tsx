@@ -7,12 +7,12 @@ export function RangeForm({ from, to, extra, exportHref }: { from?: string; to: 
   return (
     <form className="flex flex-wrap items-end gap-2 mb-5 no-print">
       {from !== undefined && (
-        <label className="grid gap-1 text-[12px] text-ink-400">From<input type="date" name="from" defaultValue={from} className="h-9 rounded-md bg-white px-2 text-[13.5px] border-[0.5px] border-ink-200" /></label>
+        <label className="grid gap-1 text-[12px] text-ink-400">From<input type="date" name="from" defaultValue={from} className="h-9 rounded-lg bg-white px-2 text-[13.5px] border border-ink-200" /></label>
       )}
-      <label className="grid gap-1 text-[12px] text-ink-400">{from !== undefined ? "To" : "As at"}<input type="date" name={from !== undefined ? "to" : "asOf"} defaultValue={to} className="h-9 rounded-md bg-white px-2 text-[13.5px] border-[0.5px] border-ink-200" /></label>
+      <label className="grid gap-1 text-[12px] text-ink-400">{from !== undefined ? "To" : "As at"}<input type="date" name={from !== undefined ? "to" : "asOf"} defaultValue={to} className="h-9 rounded-lg bg-white px-2 text-[13.5px] border border-ink-200" /></label>
       {extra}
-      <button className="h-9 px-4 rounded-md bg-brand text-brand-ink text-[13px] font-medium cursor-pointer">Show</button>
-      {exportHref && <a href={exportHref} className="h-9 px-3 rounded-md border-[0.5px] border-ink-200 text-[13px] grid place-items-center hover:bg-ink-50">Download CSV</a>}
+      <button className="h-9 px-4 rounded-lg bg-brand text-brand-ink text-[13px] font-medium cursor-pointer">Show</button>
+      {exportHref && <a href={exportHref} className="h-9 px-3 rounded-lg border border-ink-200 text-[13px] grid place-items-center hover:bg-ink-50">Download CSV</a>}
     </form>
   );
 }

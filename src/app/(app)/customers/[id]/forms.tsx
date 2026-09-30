@@ -9,7 +9,7 @@ export function CreditForm({ customer }: { customer: { id: number; type: "retail
   const [enabled, setEnabled] = useState(customer.creditEnabled);
   return (
     <form action={action} className="card p-5 grid gap-3">
-      <h2 className="text-[15px] font-semibold">Customer type & credit</h2>
+      <h2 className="text-[13.5px] font-semibold">Customer type & credit</h2>
       <input type="hidden" name="customerId" value={customer.id} />
       <Field label="Type" hint="Wholesale customers pay wholesale prices and don't earn points">
         <Select id="c-type" name="type" defaultValue={customer.type}>
@@ -38,7 +38,7 @@ export function PaymentForm({ customerId, owedCents }: { customerId: number; owe
   const [method, setMethod] = useState<"mpesa" | "bank" | "cash">("mpesa");
   return (
     <form action={action} className="card p-5 grid gap-3">
-      <h2 className="text-[15px] font-semibold">Record a payment</h2>
+      <h2 className="text-[13.5px] font-semibold">Record a payment</h2>
       <input type="hidden" name="customerId" value={customerId} />
       <Field label="Amount (KES)" hint={`Owes ${(owedCents / 100).toLocaleString("en-KE", { minimumFractionDigits: 2 })}`}><Input id="p-amt" name="amount" inputMode="decimal" required /></Field>
       <Field label="Paid by">

@@ -9,6 +9,8 @@ import type { Role } from "@/lib/context";
 import { BooksLockedError } from "@/lib/ledger";
 import { openingCustomerDebt, openingMoney, OpeningError, openingSupplierDebt } from "@/lib/opening";
 import { normalizeKenyanPhone } from "@/lib/phone";
+import { isHexColor } from "@/lib/brand";
+import { ImageError, imagesEnabled, saveOrgLogo } from "@/lib/images";
 import { addStaff, TeamError, updateStaff } from "@/lib/team";
 
 type State = { error?: string; ok?: string };
@@ -54,6 +56,42 @@ export async function saveShop(_: unknown, form: FormData): Promise<State> {
   }
   revalidatePath("/", "layout");
   return { ok: "Saved." };
+}
+
+/** Logo and brand colour. The logo arrives already resized by the browser; the server re-checks everything. */
+export async function saveBrand(form: FormData): Promise<State> {
+  const color = String(form.get("brandColor") ?? "");
+  if (!isHexColor(color)) return { error: "Pick a brand colour." };
+  const file = form.get("logo");
+  const removeLogo = form.get("removeLogo") === "1";
+  try {
+    await withSession("settings.edit", async (s) => {
+      let logo: { logoUrl: string | null; logoPrint: string | null } | null = removeLogo ? { logoUrl: null, logoPrint: null } : null;
+      if (file instanceof File && file.size > 0) {
+        if (!imagesEnabled()) throw new ImageError("Logo uploads need SUPABASE_SERVICE_ROLE_KEY in the environment.");
+        const saved = await saveOrgLogo(s.org.id, new Uint8Array(await file.arrayBuffer()), file.type);
+        logo = { logoUrl: saved.url, logoPrint: saved.print };
+      }
+      const values = { brandColor: color.toUpperCase(), ...(logo ?? {}) };
+      await db.transaction(async (tx) => {
+        await tx.update(orgs).set(values).where(eq(orgs.id, s.org.id));
+        await audit(tx, {
+          action: "settings.brand",
+          entity: "org",
+          entityId: s.org.id,
+          before: { brandColor: s.org.brandColor, logoUrl: s.org.logoUrl },
+          after: { brandColor: values.brandColor, logoUrl: logo ? logo.logoUrl : s.org.logoUrl },
+        });
+      });
+    });
+  } catch (e) {
+    if (e instanceof ImageError) return { error: e.message };
+    const m = known(e);
+    if (m) return { error: m };
+    throw e;
+  }
+  revalidatePath("/", "layout");
+  return { ok: "Brand saved. Receipts will use it from the next sale." };
 }
 
 const Staff = z.object({ name: z.string().trim().min(1), email: z.string().trim().email("Enter a valid email."), password: z.string().min(10, "Starting password: at least 10 characters."), role: z.enum(["owner", "accountant", "staff", "cashier"]) });

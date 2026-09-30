@@ -20,7 +20,7 @@ export function ShopForm({ v }: { v: ShopValues }) {
   return (
     <form action={action} className="grid gap-5 max-w-2xl">
       <div className="card p-5 grid gap-3 sm:grid-cols-2">
-        <h2 className="text-[15px] font-semibold sm:col-span-2">Shop</h2>
+        <h2 className="text-[13.5px] font-semibold sm:col-span-2">Shop</h2>
         <Field label="Shop name"><Input id="s-name" name="name" defaultValue={v.name} required /></Field>
         <Field label="Owner's phone" hint="Gets the daily summary SMS"><Input id="s-phone" name="phone" defaultValue={v.phone} inputMode="tel" /></Field>
         <Field label="Address (on receipts)"><Input id="s-addr" name="address" defaultValue={v.address} /></Field>
@@ -28,18 +28,18 @@ export function ShopForm({ v }: { v: ShopValues }) {
         <div className="sm:col-span-2"><Field label="Receipt footer"><Textarea id="s-foot" name="receiptFooter" rows={2} defaultValue={v.receiptFooter} /></Field></div>
       </div>
       <div className="card p-5 grid gap-3 sm:grid-cols-2">
-        <h2 className="text-[15px] font-semibold sm:col-span-2">Till rules</h2>
+        <h2 className="text-[13.5px] font-semibold sm:col-span-2">Till rules</h2>
         <Field label="Cashier discount limit (KES)" hint="Above this the owner enters their PIN"><Input id="s-disc" name="cashierDiscountLimit" inputMode="decimal" defaultValue={v.cashierDiscountLimit} /></Field>
         <Field label="Return window (hours)"><Input id="s-ret" name="returnWindowHours" inputMode="numeric" defaultValue={v.returnWindowHours} /></Field>
       </div>
       <div className="card p-5 grid gap-3 sm:grid-cols-3">
-        <h2 className="text-[15px] font-semibold sm:col-span-3">Loyalty points</h2>
+        <h2 className="text-[13.5px] font-semibold sm:col-span-3">Loyalty points</h2>
         <Field label="KES spent per point"><Input id="s-earn" name="loyaltyEarnKes" inputMode="decimal" defaultValue={v.loyaltyEarnKes} /></Field>
         <Field label="Value of 1 point (KES)"><Input id="s-val" name="loyaltyPointValue" inputMode="decimal" defaultValue={v.loyaltyPointValue} /></Field>
         <Field label="Use points from (KES)"><Input id="s-min" name="loyaltyMinRedeem" inputMode="decimal" defaultValue={v.loyaltyMinRedeem} /></Field>
       </div>
       <div className="card p-5 grid gap-3 sm:grid-cols-2">
-        <h2 className="text-[15px] font-semibold sm:col-span-2">Tax</h2>
+        <h2 className="text-[13.5px] font-semibold sm:col-span-2">Tax</h2>
         <Field label="Turnover Tax rate (%)" hint="1.5% since 2023 — confirm with your accountant"><Input id="s-tot" name="totRatePct" inputMode="decimal" defaultValue={v.totRatePct} /></Field>
       </div>
       <Result state={state} />
@@ -53,14 +53,14 @@ export function AddStaffForm({ enabled }: { enabled: boolean }) {
   if (!enabled) {
     return (
       <div className="card p-5 grid gap-2">
-        <h2 className="text-[15px] font-semibold">Add staff</h2>
+        <h2 className="text-[13.5px] font-semibold">Add staff</h2>
         <p className="text-[13px] text-ink-600">To create staff logins, add <code>SUPABASE_SERVICE_ROLE_KEY</code> to <code>.env.local</code> (Supabase → Project Settings → API → service_role) and restart.</p>
       </div>
     );
   }
   return (
     <form action={action} className="card p-5 grid gap-3" key={state.ok}>
-      <h2 className="text-[15px] font-semibold">Add staff</h2>
+      <h2 className="text-[13.5px] font-semibold">Add staff</h2>
       <Field label="Name"><Input id="m-name" name="name" required /></Field>
       <Field label="Email (their login)"><Input id="m-email" name="email" type="email" required /></Field>
       <Field label="Starting password" hint="Tell them in person; they can change it later"><Input id="m-pw" name="password" type="text" autoComplete="off" minLength={10} required /></Field>
@@ -84,7 +84,7 @@ export function StaffRow({ id, role, active, isMe }: { id: number; role: Role; a
   const act = (patch: { role?: Role; active?: boolean }) => start(async () => { const r = await changeStaff(id, patch); setError(r.error ?? null); });
   return (
     <span className="flex items-center gap-2 justify-end flex-wrap">
-      <select disabled={pending || isMe} value={role} onChange={(e) => act({ role: e.target.value as Role })} className="h-8 rounded-md border-[0.5px] border-ink-200 px-1 text-[13px]" aria-label="Role">
+      <select disabled={pending || isMe} value={role} onChange={(e) => act({ role: e.target.value as Role })} className="h-8 rounded-lg border border-ink-200 px-1 text-[13px]" aria-label="Role">
         <option value="cashier">Cashier</option><option value="staff">Staff</option><option value="accountant">Accountant</option><option value="owner">Owner</option>
       </select>
       {!isMe && <button disabled={pending} onClick={() => act({ active: !active })} className="text-[12.5px] underline text-ink-600 cursor-pointer">{active ? "Deactivate" : "Reactivate"}</button>}
@@ -98,11 +98,11 @@ export function OpeningForm({ suppliers, customers, today }: { suppliers: { id: 
   const [kind, setKind] = useState<"money" | "supplier" | "customer">("money");
   return (
     <form action={action} className="card p-5 grid gap-3" key={state.ok}>
-      <h2 className="text-[15px] font-semibold">Add an opening balance</h2>
+      <h2 className="text-[13.5px] font-semibold">Add an opening balance</h2>
       <input type="hidden" name="kind" value={kind} />
       <div className="grid grid-cols-3 gap-1.5">
         {([["money", "Money"], ["supplier", "We owe a supplier"], ["customer", "Customer owes us"]] as const).map(([k, l]) => (
-          <button type="button" key={k} onClick={() => setKind(k)} className={`h-9 rounded-lg text-[12.5px] font-medium cursor-pointer border-[0.5px] ${kind === k ? "bg-brand text-brand-ink border-transparent" : "bg-white border-ink-200"}`}>{l}</button>
+          <button type="button" key={k} onClick={() => setKind(k)} className={`h-9 rounded-lg text-[12.5px] font-medium cursor-pointer border ${kind === k ? "bg-brand text-brand-ink border-transparent" : "bg-white border-ink-200"}`}>{l}</button>
         ))}
       </div>
       {kind === "money" && <Field label="Where"><Select id="o-acct" name="account"><option value="cash_at_hand">Cash at hand</option><option value="mpesa">M-Pesa till balance</option><option value="bank">Bank balance</option></Select></Field>}

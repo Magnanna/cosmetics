@@ -19,7 +19,7 @@ export function ExpenseForm({ accounts, today }: { accounts: { id: number; name:
   const [state, action, pending] = useActionState(addExpense, {});
   return (
     <form action={action} className="card p-5 grid gap-3" key={state.ok}>
-      <h2 className="text-[15px] font-semibold">Record an expense</h2>
+      <h2 className="text-[13.5px] font-semibold">Record an expense</h2>
       <Field label="What for"><Input id="e-desc" name="description" placeholder="September rent" required /></Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Amount (KES)"><Input id="e-amt" name="amount" inputMode="decimal" required /></Field>
@@ -40,7 +40,7 @@ export function TransferForm({ today }: { today: string }) {
   const [state, action, pending] = useActionState(addTransfer, {});
   return (
     <form action={action} className="card p-5 grid gap-3" key={state.ok}>
-      <h2 className="text-[15px] font-semibold">Move money</h2>
+      <h2 className="text-[13.5px] font-semibold">Move money</h2>
       <div className="grid grid-cols-2 gap-3">
         <Field label="From"><Select id="t-from" name="from" defaultValue="cash_at_hand">{PLACES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</Select></Field>
         <Field label="To"><Select id="t-to" name="to" defaultValue="bank">{PLACES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</Select></Field>
@@ -113,7 +113,7 @@ export function MpesaUpload() {
   const [state, action, pending] = useActionState(uploadMpesaStatement, {});
   return (
     <form action={action} className="card p-5 grid gap-3">
-      <h2 className="text-[15px] font-semibold">Import a statement</h2>
+      <h2 className="text-[13.5px] font-semibold">Import a statement</h2>
       <p className="text-[13px] text-ink-600">M-Pesa portal (org.ke.m-pesa.com) → Statement → choose dates → export as CSV. Importing the same lines twice is safe.</p>
       <input type="file" name="file" accept=".csv,text/csv" required className="text-[13px]" />
       <Result state={state} />

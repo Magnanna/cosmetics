@@ -22,7 +22,7 @@ export default async function JournalPage() {
       <div className="grid gap-5 lg:grid-cols-[1fr_320px] items-start">
         <JournalForm accounts={accts.filter((a) => !PROTECTED.has(a.code))} today={nairobiDate()} />
         <div className="card p-5 grid gap-2">
-          <h2 className="text-[15px] font-semibold">Recent journals</h2>
+          <h2 className="text-[13.5px] font-semibold">Recent journals</h2>
           {recent.length === 0 ? <p className="text-[13px] text-ink-400">None yet.</p> : recent.map((j) => (
             <div key={j.id} className="text-[13px]"><span className="tnum text-ink-400">{j.date}</span> {j.memo}</div>
           ))}

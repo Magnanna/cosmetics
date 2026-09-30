@@ -4,7 +4,7 @@ import { receiptBytes } from "../src/lib/escpos";
 import type { ReceiptData } from "../src/lib/receipt";
 
 const sample: ReceiptData = {
-  shop: { name: "Kenfri Cosmetics", address: "Cheptulu Market", phone: "0714 733 287", kraPin: null, footer: "Returns within 24 hrs, unopened items only. Thank you!" },
+  shop: { name: "Kenfri Cosmetics", address: "Cheptulu Market", phone: "0714 733 287", kraPin: null, footer: "Returns within 24 hrs, unopened items only. Thank you!", logoUrl: null, brandColor: "#5A2132", logoPrint: null },
   receiptNo: "KF-000042",
   token: "abc",
   createdAt: "2026-09-25T08:30:00.000Z",
@@ -31,7 +31,7 @@ function text(b: Uint8Array): string {
       i += cmd === "@" ? 2 : cmd === "p" ? 5 : 3;
     } else if (c === 0x1d) {
       const cmd = String.fromCharCode(b[i + 1]);
-      i += cmd === "(" ? 5 + b[i + 3] + b[i + 4] * 256 : 3;
+      i += cmd === "(" ? 5 + b[i + 3] + b[i + 4] * 256 : cmd === "v" ? 8 + (b[i + 4] + b[i + 5] * 256) * (b[i + 6] + b[i + 7] * 256) : 3;
     } else {
       if ((c >= 0x20 && c < 0x7f) || c === 10) out += String.fromCharCode(c);
       i++;

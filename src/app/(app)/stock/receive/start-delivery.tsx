@@ -18,7 +18,7 @@ export function StartDelivery({ suppliers, today }: { suppliers: { id: number; n
 
   return (
     <form action={action} className="card p-5 grid gap-3">
-      <h2 className="text-[15px] font-semibold">New delivery</h2>
+      <h2 className="text-[13.5px] font-semibold">New delivery</h2>
       <Field label="Supplier">
         <Select id="d-supplier" name="supplierId" value={supplierId} onChange={(e) => setSupplierId(Number(e.target.value))}>
           {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}

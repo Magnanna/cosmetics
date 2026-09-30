@@ -44,7 +44,7 @@ export const VariantSearch = forwardRef<HTMLInputElement, {
           }
         }}
         placeholder={placeholder ?? "Search product or scan barcode"}
-        className="h-11 w-full rounded-lg bg-white px-3 text-[15px] border-[0.5px] border-ink-200 placeholder:text-ink-400 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-tint"
+        className="h-11 w-full rounded-lg bg-white px-3 text-[15px] border border-ink-200 placeholder:text-ink-400 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-tint"
       />
       {matches.length > 0 && (
         <ul className="absolute z-20 left-0 right-0 mt-1 card py-1 max-h-72 overflow-y-auto">

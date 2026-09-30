@@ -5,11 +5,14 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { completeSale, lookupCustomer, parkSale, parkedList, quickCreateCustomer, startShift, type ParkedCart, type TillCustomer } from "./actions";
 import { MoreMenu, ParkedSales, PinPrompt, SwitchUser, type ExchangeCredit } from "./till-dialogs";
 import { useRouter } from "next/navigation";
+import { motion } from "motion/react";
+import { ArrowLeft, Minus, PauseCircle, Phone, Plus, Printer, ScanBarcode, Search, Trash2, X } from "lucide-react";
 import { applyOffers, type OfferDef } from "@/lib/offers";
 import { fmtPoints } from "@/lib/loyalty";
 import { choosePrinter, inDesktopApp, listPrinters, openDrawer, printReceipt, printTestPage } from "@/lib/print-client";
 import { parseKES } from "@/lib/money";
 import { normalizeKenyanPhone } from "@/lib/phone";
+import { ShopMark } from "@/components/sidebar";
 import type { Role } from "@/lib/context";
 
 export interface TillVariant {
@@ -49,6 +52,7 @@ const kes = (c: number) => `${c < 0 ? "-" : ""}${Math.floor(Math.abs(c) / 100).t
 
 export function TillApp(props: {
   shopName: string;
+  logoUrl: string | null;
   cashierName: string;
   role: Role;
   registerId: number | null;
@@ -229,20 +233,25 @@ export function TillApp(props: {
     return <Blocking title="No till set up" body="Run the seed to create Till 1." />;
   }
   if (!shiftOpen) {
-    return <OpenShift registerId={props.registerId} registerName={props.registerName} cashierName={props.cashierName} onOpened={() => setShiftOpen(true)} />;
+    return <OpenShift shopName={props.shopName} logoUrl={props.logoUrl} registerId={props.registerId} registerName={props.registerName} cashierName={props.cashierName} onOpened={() => setShiftOpen(true)} />;
   }
 
   return (
     <div className="h-screen flex flex-col bg-ink-50 text-ink-900 select-none">
-      <header className="sidebar-chrome hairline-b h-12 shrink-0 flex items-center justify-between gap-3 px-4 text-[13px]">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-7 h-7 rounded-md bg-brand text-brand-ink grid place-items-center font-bold text-[12px]">K</div>
-          <span className="font-semibold truncate">{props.shopName}</span>
-          <span className="text-ink-400 hidden sm:inline">{props.registerName}</span>
+      <header className="shrink-0 px-3 pt-3">
+        <div className="sidebar-chrome rounded-2xl border border-ink-100/70 shadow-[0_2px_14px_rgba(0,0,0,0.06)] h-16 flex items-center justify-between gap-3 pl-2.5 pr-2 text-[13px]">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="shrink-0 size-11 rounded-xl overflow-hidden flex items-center justify-center bg-white shadow-[0_1px_3px_rgba(0,0,0,0.12)] border border-ink-100">
+            <ShopMark shopName={props.shopName} logoUrl={props.logoUrl} className="text-[18px]" />
+          </div>
+          <div className="min-w-0 leading-tight">
+            <div className="text-[13.5px] font-semibold tracking-tight truncate">{props.shopName}</div>
+            <div className="text-[10.5px] text-ink-400 mt-0.5 truncate">{props.registerName}</div>
+          </div>
         </div>
-        <div className="flex items-center gap-4 text-ink-600">
-          <span className="flex items-center gap-1.5">
-            <span className={`w-2 h-2 rounded-full ${online ? "bg-good" : "bg-bad"}`} />
+        <div className="flex items-center gap-1 text-ink-600">
+          <span className={`hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 mr-1 rounded-full text-[11px] font-medium border ${online ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-red-50 text-red-700 border-red-200"}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${online ? "bg-emerald-500" : "bg-red-500"}`} />
             {online ? "Online" : "Offline — sales can't be saved"}
           </span>
           <MoreMenu
@@ -257,19 +266,33 @@ export function TillApp(props: {
             onReprint={(token) => printReceipt(token, false, true).then(() => setToast("Reprint sent.")).catch((e) => setToast(`Receipt didn't print: ${e.message}`))}
           />
           <PrinterMenu shopName={props.shopName} onMessage={setToast} />
-          {parkedCount > 0 && <button onClick={() => setShowParked(true)} className="text-brand-700 font-medium cursor-pointer">Parked ({parkedCount})</button>}
-          <button onClick={() => setSwitching(true)} className="flex items-center gap-1.5 cursor-pointer hover:text-ink-900" title="Switch who is using the till">
-            <span className="w-6 h-6 rounded-full bg-brand-tint text-brand-700 grid place-items-center text-[11px] font-bold">{props.cashierName.slice(0, 1).toUpperCase()}</span>
-            <span className="hidden sm:inline">{props.cashierName}</span>
-            <span className="text-ink-400">· Switch</span>
+          {parkedCount > 0 && (
+            <button onClick={() => setShowParked(true)} className={`${TOOL} text-brand-700 font-medium`}>
+              <PauseCircle aria-hidden="true" className="size-4" />
+              Parked
+              <span className="min-w-5 h-5 px-1.5 rounded-full bg-brand text-brand-ink text-[11px] font-semibold grid place-items-center tnum">{parkedCount}</span>
+            </button>
+          )}
+          <button onClick={() => setSwitching(true)} className={`${TOOL} pl-1.5`} title="Switch who is using the till">
+            <span className="size-7 rounded-full bg-brand text-brand-ink grid place-items-center text-[11.5px] font-semibold">{props.cashierName.slice(0, 1).toUpperCase()}</span>
+            <span className="hidden sm:inline text-ink-900 font-medium">{props.cashierName}</span>
+            <span className="text-ink-400">Switch</span>
           </button>
-          {props.role !== "cashier" && <Link href="/" className="text-brand-700 underline">Back office</Link>}
+          {props.role !== "cashier" && (
+            <Link href="/" className="ml-1 h-9 px-3.5 rounded-full bg-white border border-ink-200 text-ink-600 hover:text-ink-900 hover:bg-ink-50 inline-flex items-center gap-1.5 font-medium transition-colors">
+              <ArrowLeft aria-hidden="true" className="size-3.5" />
+              <span className="hidden sm:inline">Back office</span>
+            </Link>
+          )}
+        </div>
         </div>
       </header>
 
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(340px,1fr)]">
         {/* Products */}
-        <section className="min-h-0 flex flex-col p-4 gap-3">
+        <section className="min-h-0 flex flex-col p-3 pt-4 lg:pl-4 gap-3">
+          <div className="relative flex items-center shrink-0">
+          <Search aria-hidden="true" className="absolute left-4 size-4 text-ink-400 pointer-events-none" />
           <input
             ref={searchRef}
             autoFocus
@@ -284,9 +307,11 @@ export function TillApp(props: {
               if (e.key === "Escape") setQuery("");
             }}
             placeholder="Search name, brand or shade — or scan a barcode (F2)"
-            className="h-12 w-full rounded-xl bg-white px-4 text-[15px] border-[0.5px] border-ink-200 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-tint select-text"
+            className="h-12 w-full rounded-full bg-white pl-11 pr-12 text-[14.5px] border border-ink-200 shadow-[0_1px_2px_rgba(0,0,0,0.04)] placeholder:text-ink-400 transition-all focus:border-brand-ring focus:outline-none focus:ring-2 focus:ring-brand-tint select-text"
           />
-          <div className="flex gap-2 overflow-x-auto pb-1 shrink-0">
+          <ScanBarcode aria-hidden="true" className="absolute right-4 size-4.5 text-ink-400 pointer-events-none" />
+          </div>
+          <div className="flex gap-0.5 overflow-x-auto shrink-0 self-start max-w-full rounded-full bg-white border border-ink-200 p-1 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
             <Chip on={category === null} onClick={() => setCategory(null)}>All</Chip>
             {props.categories.map((c) => (
               <Chip key={c.id} on={category === c.id} onClick={() => setCategory(c.id)}>{c.name}</Chip>
@@ -294,9 +319,9 @@ export function TillApp(props: {
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto">
             {visible.length === 0 ? (
-              <p className="text-[14px] text-ink-400 p-6 text-center">{props.products.length === 0 ? "No products yet — add them in the back office." : "Nothing matches that search."}</p>
+              <p className="card text-[13.5px] text-ink-400 p-10 text-center">{props.products.length === 0 ? "No products yet — add them in the back office." : "Nothing matches that search."}</p>
             ) : (
-              <div className="grid gap-2.5 grid-cols-[repeat(auto-fill,minmax(140px,1fr))]">
+              <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(150px,1fr))] pb-3">
                 {visible.map((p) => {
                   const prices = p.variants.map(priceOf).filter((c) => c > 0);
                   const min = prices.length ? Math.min(...prices) : 0;
@@ -305,20 +330,20 @@ export function TillApp(props: {
                     <button
                       key={p.id}
                       onClick={() => (p.variants.length === 1 ? addVariant(p, p.variants[0]) : setPicker(p))}
-                      className="card text-left p-3 grid gap-2 content-start min-h-[112px] hover:border-brand active:scale-[0.98] transition cursor-pointer"
+                      className="card text-left p-3 grid gap-2 content-start min-h-[120px] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.07)] hover:border-ink-200 active:scale-[0.98] transition-all duration-200 cursor-pointer"
                     >
                       {p.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.imageUrl} alt="" loading="lazy" className="h-16 w-full rounded-md object-contain bg-white" />
+                        <img src={p.imageUrl} alt="" loading="lazy" className="h-20 w-full rounded-lg object-contain bg-ink-50" />
                       ) : (
-                      <div className="h-9 rounded-md flex overflow-hidden bg-ink-50">
+                      <div className="h-10 rounded-lg flex overflow-hidden bg-ink-50">
                         {swatches.length > 0 ? swatches.map((v) => <span key={v.id} className="flex-1" style={{ background: v.swatchHex! }} />) : <span className="flex-1 grid place-items-center text-[11px] text-ink-400">{p.brand ?? ""}</span>}
                       </div>
                       )}
                       <span className="text-[13px] font-medium leading-snug line-clamp-2">{p.name}</span>
-                      <span className="text-[12px] text-ink-400 tnum">
+                      <span className="text-[11.5px] text-ink-400 tnum">
                         {p.variants.length > 1 ? `${p.variants.length} ${p.optionNames[0]?.toLowerCase() ?? "options"} · from ` : ""}
-                        {min > 0 ? kes(min) : "No price"}
+                        <span className={min > 0 ? "text-[13px] font-semibold text-ink-900" : ""}>{min > 0 ? kes(min) : "No price"}</span>
                       </span>
                     </button>
                   );
@@ -329,39 +354,46 @@ export function TillApp(props: {
         </section>
 
         {/* Cart */}
-        <aside className="min-h-0 flex flex-col bg-white border-l-[0.5px] border-ink-100">
+        <aside className="min-h-0 flex flex-col card rounded-2xl m-3 lg:ml-1 lg:mt-4 overflow-hidden">
+          <div className="flex items-baseline justify-between px-5 pt-4">
+            <h2 className="text-[13.5px] font-semibold">Current sale</h2>
+            <span className="text-[11.5px] text-ink-400 tnum">{units} item{units === 1 ? "" : "s"}</span>
+          </div>
           <CustomerSlot customer={customer} onChange={(c) => { setCustomer(c); if (!c || c.id !== exchange?.customerId) setExchange(null); }} phoneRef={phoneRef} />
           {exchange && (
-            <div className="mx-4 mb-2 rounded-lg bg-ink-50 px-3 py-2 text-[12.5px] flex justify-between">
+            <div className="mx-5 mb-2 rounded-lg bg-brand-wash border border-brand-tint px-3 py-2 text-[12.5px] flex justify-between">
               <span>Exchange credit from {exchange.returnNo}</span>
               <span className="tnum font-semibold">KES {kes(exchange.creditLeftCents)}</span>
             </div>
           )}
-          <div className="flex-1 min-h-0 overflow-y-auto px-4">
+          <div className="flex-1 min-h-0 overflow-y-auto px-5">
             {lines.length === 0 ? (
-              <p className="text-[13.5px] text-ink-400 text-center py-10">Scan or tap a product to start.</p>
+              <div className="grid justify-items-center gap-2 text-center py-12">
+                <span className="size-11 rounded-full bg-ink-50 border border-ink-100 grid place-items-center text-ink-400"><ScanBarcode aria-hidden="true" className="size-5" /></span>
+                <p className="text-[12.5px] text-ink-400">Scan or tap a product to start.</p>
+              </div>
             ) : (
-              <ul className="divide-y-[0.5px] divide-ink-100">
+              <ul className="divide-y divide-ink-100">
                 {lines.map((l) => (
-                  <li key={l.variantId} className="py-3 grid gap-1.5">
-                    <div className="flex justify-between gap-3 text-[13.5px]">
+                  <li key={l.variantId} className="py-3 grid gap-2 animate-[zeno-pop_0.18s_ease-out]">
+                    <div className="flex justify-between gap-3 text-[13px]">
                       <span className="font-medium leading-snug">{l.productName}{l.label && <span className="text-ink-400 font-normal"> · {l.label}</span>}</span>
-                      <span className="tnum whitespace-nowrap">
-                        {l.promo > 0 && <s className="text-ink-400 mr-1.5">{kes(l.gross)}</s>}
+                      <span className="tnum whitespace-nowrap font-semibold">
+                        {l.promo > 0 && <s className="text-ink-400 font-normal mr-1.5">{kes(l.gross)}</s>}
                         {kes(l.net)}
                       </span>
                     </div>
-                    {l.offerTitle && <span className="text-[11.5px] text-brand-700">{l.offerTitle}</span>}
+                    {l.offerTitle && <span className="justify-self-start inline-flex px-2 py-0.5 rounded-full text-[10.5px] font-medium border bg-brand-wash text-brand-700 border-brand-tint">{l.offerTitle}</span>}
                     <div className="flex items-center justify-between gap-2 text-[12.5px] text-ink-600">
                       <div className="flex items-center gap-1">
-                        <QtyButton label="−" onClick={() => setCart((c) => c.flatMap((x) => (x.variantId !== l.variantId ? [x] : x.qty > 1 ? [{ ...x, qty: x.qty - 1, discountCents: Math.min(x.discountCents, (x.qty - 1) * l.unit) }] : [])))} />
-                        <span className="w-8 text-center tnum text-[14px] text-ink-900">{l.qty}</span>
-                        <QtyButton label="+" onClick={() => setCart((c) => c.map((x) => (x.variantId === l.variantId ? { ...x, qty: x.qty + 1 } : x)))} />
-                        <span className="ml-2 tnum">× {kes(l.unit)}</span>
+                        <QtyButton label="Less" onClick={() => setCart((c) => c.flatMap((x) => (x.variantId !== l.variantId ? [x] : x.qty > 1 ? [{ ...x, qty: x.qty - 1, discountCents: Math.min(x.discountCents, (x.qty - 1) * l.unit) }] : [])))} />
+                        <span className="w-8 text-center tnum text-[14px] font-medium text-ink-900">{l.qty}</span>
+                        <QtyButton label="More" onClick={() => setCart((c) => c.map((x) => (x.variantId === l.variantId ? { ...x, qty: x.qty + 1 } : x)))} />
+                        <span className="ml-2 tnum text-ink-400">× {kes(l.unit)}</span>
                       </div>
                       <div className="flex items-center gap-3">
                         {l.discountCents > 0 && <span className="text-brand-700 tnum">−{kes(l.discountCents)}</span>}
-                        <button className="text-ink-400 hover:text-bad cursor-pointer" onClick={() => setCart((c) => c.filter((x) => x.variantId !== l.variantId))}>Remove</button>
+                        <button aria-label="Remove" title="Remove" className="size-8 rounded-full grid place-items-center text-ink-400 hover:text-bad hover:bg-red-50 transition-colors cursor-pointer" onClick={() => setCart((c) => c.filter((x) => x.variantId !== l.variantId))}><X aria-hidden="true" className="size-4" /></button>
                       </div>
                     </div>
                   </li>
@@ -369,9 +401,9 @@ export function TillApp(props: {
               </ul>
             )}
           </div>
-          <div className="hairline-t p-4 grid gap-2.5">
-            <div className="flex justify-between text-[13px] text-ink-600">
-              <span>{units} item{units === 1 ? "" : "s"}</span>
+          <div className="border-t border-ink-100 bg-ink-50/60 px-5 pt-4 pb-5 grid gap-2.5">
+            <div className="flex justify-between text-[12.5px] text-ink-600">
+              <span>Subtotal <span className="tnum text-ink-900">{kes(grossCents)}</span></span>
               <DiscountButton
                 currentCents={cartDiscountCents}
                 maxCents={grossCents - promoCents - lineDiscounts}
@@ -388,21 +420,24 @@ export function TillApp(props: {
             {customer?.earnsPoints && offerResult.bonusOffers.map((b) => (
               <div key={b.id} className="flex justify-between text-[12.5px] text-good"><span>{b.title}</span><span className="tnum">+{fmtPoints(b.centipoints)} pts</span></div>
             ))}
-            <div className="flex justify-between items-baseline">
-              <span className="text-[13px] text-ink-400">Total KES{wholesale ? " · wholesale prices" : ""}</span>
-              <span className="text-[30px] font-semibold tracking-tight tnum">{kes(totalCents)}</span>
+            <div className="flex justify-between items-end pt-1">
+              <div className="grid">
+                <span className="text-[12.5px] font-medium text-ink-400">Total (KES)</span>
+                {wholesale && <span className="justify-self-start mt-1 inline-flex px-2 py-0.5 rounded-full text-[10.5px] font-medium border bg-amber-50 text-amber-700 border-amber-200">Wholesale prices</span>}
+              </div>
+              <span className="text-[32px] font-semibold tracking-tight tnum leading-none">{kes(totalCents)}</span>
             </div>
             <button
               disabled={lines.length === 0 || !customer || totalCents <= 0}
               onClick={() => setPaying(true)}
-              className="h-14 rounded-xl bg-brand text-brand-ink text-[17px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer hover:bg-brand-600 transition"
+              className="h-14 mt-1 rounded-xl bg-brand text-brand-ink text-[16px] font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.12),0_6px_16px_rgba(90,33,50,0.18)] disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed cursor-pointer hover:bg-brand-600 active:scale-[0.99] transition-all duration-200"
             >
               {!customer && lines.length > 0 ? "Add the customer's phone to check out" : "Checkout"}
             </button>
             {lines.length > 0 && (
               <div className="flex justify-between">
                 <button
-                  className="text-[12.5px] text-brand-700 underline cursor-pointer"
+                  className="h-8 px-3 -ml-3 rounded-full inline-flex items-center gap-1.5 text-[12.5px] font-medium text-brand-700 hover:bg-brand-wash transition-colors cursor-pointer"
                   onClick={async () => {
                     const label = customer ? customer.businessName || customer.name || customer.phoneMasked : "";
                     const cartData: ParkedCart = { lines: cart.map((l) => ({ variantId: l.variantId, qty: l.qty, discountCents: l.discountCents })), cartDiscountCents };
@@ -413,9 +448,13 @@ export function TillApp(props: {
                     setToast("Sale parked. Take it back from “Parked” at the top.");
                   }}
                 >
+                  <PauseCircle aria-hidden="true" className="size-4" />
                   Park sale (F8)
                 </button>
-                <button className="text-[12.5px] text-ink-400 hover:text-bad cursor-pointer" onClick={resetSale}>Clear sale</button>
+                <button className="h-8 px-3 -mr-3 rounded-full inline-flex items-center gap-1.5 text-[12.5px] text-ink-400 hover:text-bad hover:bg-red-50 transition-colors cursor-pointer" onClick={resetSale}>
+                  <Trash2 aria-hidden="true" className="size-3.5" />
+                  Clear sale
+                </button>
               </div>
             )}
           </div>
@@ -468,7 +507,7 @@ export function TillApp(props: {
         />
       )}
       {done && <DoneSheet {...done} onNext={resetSale} onReprint={() => printReceipt(done.receiptToken, false).catch((e) => setToast(`Receipt didn't print: ${e.message}`))} />}
-      {toast && <div role="status" className="fixed bottom-5 left-1/2 -translate-x-1/2 max-w-md rounded-xl bg-ink-900 text-white text-[13.5px] px-4 py-3 shadow-xl">{toast}</div>}
+      {toast && <div role="status" className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[60] max-w-md rounded-2xl bg-ink-900/95 backdrop-blur text-white text-[13px] px-4 py-3 shadow-2xl animate-[zeno-pop_0.18s_ease-out]">{toast}</div>}
     </div>
   );
 }
@@ -493,11 +532,15 @@ function PrinterMenu({ shopName, onMessage }: { shopName: string; onMessage: (m:
   const run = (fn: () => Promise<void>, ok: string) => fn().then(() => onMessage(ok)).catch((e) => onMessage(typeof e === "string" ? e : (e as Error).message));
   return (
     <>
-      <button onClick={load} className="text-ink-600 hover:text-ink-900 cursor-pointer">Printer{current ? "" : " ⚠"}</button>
+      <button onClick={load} className={TOOL}>
+        <Printer aria-hidden="true" className="size-4" />
+        <span className="hidden lg:inline">Printer</span>
+        {!current && <span className="size-1.5 rounded-full bg-amber-500" title="No printer chosen" />}
+      </button>
       {open && (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-black/30 p-4" onClick={() => setOpen(false)}>
-          <div className="card p-5 w-full max-w-sm grid gap-3" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-[15px] font-semibold">Receipt printer</h2>
+        <div className="fixed inset-0 z-40 grid place-items-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setOpen(false)}>
+          <div className="card rounded-2xl shadow-xl animate-[zeno-pop_0.18s_ease-out] p-5 w-full max-w-sm grid gap-3" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-[13.5px] font-semibold">Receipt printer</h2>
             {printers.length === 0 ? (
               <p className="text-[13.5px] text-ink-600">No printers found. Install the XP-Q80 driver and plug the printer in by USB.</p>
             ) : (
@@ -506,7 +549,7 @@ function PrinterMenu({ shopName, onMessage }: { shopName: string; onMessage: (m:
                   <li key={p}>
                     <button
                       onClick={() => run(async () => { await choosePrinter(p); setCurrent(p); }, `Receipts will print on ${p}.`)}
-                      className={`w-full text-left h-10 px-3 rounded-lg border-[0.5px] cursor-pointer ${current === p ? "bg-brand-tint border-transparent font-semibold text-brand-700" : "border-ink-200 hover:bg-ink-50"}`}
+                      className={`w-full text-left h-10 px-3 rounded-lg border cursor-pointer ${current === p ? "bg-brand-tint border-transparent font-semibold text-brand-700" : "border-ink-200 hover:bg-ink-50"}`}
                     >
                       {p}
                     </button>
@@ -515,8 +558,8 @@ function PrinterMenu({ shopName, onMessage }: { shopName: string; onMessage: (m:
               </ul>
             )}
             <div className="grid grid-cols-2 gap-2">
-              <button disabled={!current} onClick={() => run(() => printTestPage(shopName), "Test slip sent.")} className="h-10 rounded-lg border-[0.5px] border-ink-200 cursor-pointer disabled:opacity-40">Print test</button>
-              <button disabled={!current} onClick={() => run(openDrawer, "Drawer opened.")} className="h-10 rounded-lg border-[0.5px] border-ink-200 cursor-pointer disabled:opacity-40">Open drawer</button>
+              <button disabled={!current} onClick={() => run(() => printTestPage(shopName), "Test slip sent.")} className="h-10 rounded-lg border border-ink-200 cursor-pointer disabled:opacity-40">Print test</button>
+              <button disabled={!current} onClick={() => run(openDrawer, "Drawer opened.")} className="h-10 rounded-lg border border-ink-200 cursor-pointer disabled:opacity-40">Open drawer</button>
             </div>
           </div>
         </div>
@@ -525,34 +568,44 @@ function PrinterMenu({ shopName, onMessage }: { shopName: string; onMessage: (m:
   );
 }
 
+/** Header toolbar button: quiet pill that lifts to white on hover (Zeno sidebar feel). */
+const TOOL = "h-9 px-3 rounded-full inline-flex items-center gap-1.5 whitespace-nowrap hover:bg-white/70 hover:text-ink-900 transition-colors cursor-pointer";
+
+/** Category filter: the active pill slides between options like Zeno's sidebar highlight. */
 function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} className={`h-9 px-3.5 rounded-full text-[13px] whitespace-nowrap cursor-pointer border-[0.5px] ${on ? "bg-brand-tint text-brand-700 border-transparent font-semibold" : "bg-white text-ink-600 border-ink-200 hover:bg-ink-50"}`}>
-      {children}
+    <button onClick={onClick} className={`relative h-8 px-3.5 rounded-full text-[12.5px] whitespace-nowrap cursor-pointer transition-colors ${on ? "text-brand-ink font-medium" : "text-ink-600 hover:text-ink-900"}`}>
+      {on && <motion.span layoutId="till-category-pill" transition={{ type: "spring", stiffness: 500, damping: 40 }} className="absolute inset-0 rounded-full bg-brand shadow-[0_1px_2px_rgba(0,0,0,0.12)]" />}
+      <span className="relative">{children}</span>
     </button>
   );
 }
 
-function QtyButton({ label, onClick }: { label: string; onClick: () => void }) {
-  return <button onClick={onClick} className="w-9 h-9 rounded-lg border-[0.5px] border-ink-200 text-[16px] hover:bg-ink-50 cursor-pointer">{label}</button>;
+function QtyButton({ label, onClick }: { label: "Less" | "More"; onClick: () => void }) {
+  const Icon = label === "Less" ? Minus : Plus;
+  return (
+    <button onClick={onClick} aria-label={label === "Less" ? "One less" : "One more"} className="size-8 rounded-lg bg-white border border-ink-200 grid place-items-center text-ink-600 hover:bg-ink-50 hover:text-ink-900 active:scale-95 transition-all cursor-pointer">
+      <Icon aria-hidden="true" className="size-3.5" />
+    </button>
+  );
 }
 
 function Blocking({ title, body }: { title: string; body: string }) {
   return (
     <div className="h-screen grid place-items-center p-6">
-      <div className="card p-8 max-w-sm text-center grid gap-2"><h1 className="text-[18px] font-semibold">{title}</h1><p className="text-[14px] text-ink-600">{body}</p></div>
+      <div className="card rounded-2xl p-8 max-w-sm text-center grid gap-2"><h1 className="text-[18px] font-semibold">{title}</h1><p className="text-[14px] text-ink-600">{body}</p></div>
     </div>
   );
 }
 
-function OpenShift({ registerId, registerName, cashierName, onOpened }: { registerId: number; registerName: string; cashierName: string; onOpened: () => void }) {
+function OpenShift({ shopName, logoUrl, registerId, registerName, cashierName, onOpened }: { shopName: string; logoUrl: string | null; registerId: number; registerName: string; cashierName: string; onOpened: () => void }) {
   const [float, setFloat] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   return (
     <div className="h-screen grid place-items-center p-6 bg-ink-50">
       <form
-        className="card p-7 w-full max-w-sm grid gap-4"
+        className="card rounded-2xl shadow-xl p-7 w-full max-w-sm grid gap-4 animate-[zeno-pop_0.22s_ease-out]"
         onSubmit={(e) => {
           e.preventDefault();
           const cents = float.trim() === "" ? 0 : parseKES(float);
@@ -564,16 +617,19 @@ function OpenShift({ registerId, registerName, cashierName, onOpened }: { regist
           });
         }}
       >
-        <div>
-          <h1 className="text-[20px] font-semibold tracking-tight">Open {registerName}</h1>
+        <div className="grid gap-3">
+          <div className="size-12 rounded-xl overflow-hidden flex items-center justify-center bg-white shadow-[0_1px_3px_rgba(0,0,0,0.12)] border border-ink-100"><ShopMark shopName={shopName} logoUrl={logoUrl} className="text-[20px]" /></div>
+          <div>
+          <h1 className="text-2xl font-bold tracking-tight">Open {registerName}</h1>
           <p className="text-[13.5px] text-ink-400 mt-1">Hi {cashierName.split(" ")[0]}. Count the cash in the drawer before you start.</p>
+          </div>
         </div>
         <label className="grid gap-1.5 text-[13px]">
           <span className="font-medium text-ink-600">Opening float (KES)</span>
-          <input autoFocus inputMode="decimal" value={float} onChange={(e) => setFloat(e.target.value)} className="h-12 rounded-lg bg-white px-3 text-[20px] tnum border-[0.5px] border-ink-200 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-tint" placeholder="0.00" />
+          <input autoFocus inputMode="decimal" value={float} onChange={(e) => setFloat(e.target.value)} className="h-12 rounded-lg bg-white px-3 text-[20px] tnum border border-ink-200 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-tint" placeholder="0.00" />
         </label>
         {error && <p className="text-bad text-[13px]">{error}</p>}
-        <button disabled={pending} className="h-12 rounded-lg bg-brand text-brand-ink font-semibold cursor-pointer disabled:opacity-50">{pending ? "Opening…" : "Open till"}</button>
+        <button disabled={pending} className="h-12 rounded-lg bg-brand text-brand-ink font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.12)] hover:bg-brand-600 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-50">{pending ? "Opening…" : "Open till"}</button>
       </form>
     </div>
   );
@@ -589,16 +645,17 @@ function CustomerSlot({ customer, onChange, phoneRef }: { customer: TillCustomer
 
   if (customer) {
     return (
-      <div className="m-4 mb-2 rounded-xl bg-brand-wash px-4 py-3 flex justify-between items-start gap-3">
-        <div className="grid gap-0.5 min-w-0">
-          <span className="text-[14px] font-semibold truncate">{customer.businessName || customer.name || "Customer"} <span className="text-ink-400 font-normal">· {customer.phoneMasked}</span></span>
+      <div className="mx-5 mt-3 mb-2 rounded-xl bg-brand-wash border border-brand-tint px-3.5 py-3 flex justify-between items-start gap-3">
+        <span className="size-9 shrink-0 rounded-full bg-brand text-brand-ink grid place-items-center text-[13px] font-semibold">{(customer.businessName || customer.name || "C").slice(0, 1).toUpperCase()}</span>
+        <div className="grid gap-0.5 min-w-0 flex-1">
+          <span className="text-[13.5px] font-semibold truncate">{customer.businessName || customer.name || "Customer"} <span className="text-ink-400 font-normal">· {customer.phoneMasked}</span></span>
           <span className="text-[12.5px] text-ink-600">
             {customer.type === "wholesale" ? "Wholesale" : "Retail"}
             {customer.earnsPoints && ` · ${(customer.pointsBalance / 100).toLocaleString("en-KE", { maximumFractionDigits: 2 })} pts`}
             {customer.creditEnabled && ` · KES ${kes(customer.creditAvailableCents)} credit left`}
           </span>
         </div>
-        <button className="text-[12.5px] text-ink-600 hover:text-ink-900 cursor-pointer" onClick={() => onChange(null)}>Change</button>
+        <button className="h-7 px-2.5 rounded-full text-[12px] font-medium text-ink-600 bg-white/70 border border-brand-tint hover:text-ink-900 hover:bg-white transition-colors cursor-pointer" onClick={() => onChange(null)}>Change</button>
       </div>
     );
   }
@@ -615,8 +672,10 @@ function CustomerSlot({ customer, onChange, phoneRef }: { customer: TillCustomer
   };
 
   return (
-    <div className="m-4 mb-2 grid gap-2">
+    <div className="mx-5 mt-3 mb-2 grid gap-2">
       <div className="flex gap-2">
+        <div className="relative flex-1 flex items-center">
+        <Phone aria-hidden="true" className="absolute left-3 size-4 text-ink-400 pointer-events-none" />
         <input
           ref={phoneRef}
           value={phone}
@@ -624,13 +683,14 @@ function CustomerSlot({ customer, onChange, phoneRef }: { customer: TillCustomer
           onChange={(e) => { setPhone(e.target.value); setCreating(false); }}
           onKeyDown={(e) => e.key === "Enter" && lookup()}
           placeholder="Customer phone (F4)"
-          className="h-11 flex-1 rounded-lg bg-white px-3 text-[15px] tnum border-[0.5px] border-ink-200 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-tint select-text"
+          className="h-11 w-full rounded-lg bg-white pl-9 pr-3 text-[14.5px] tnum border border-ink-200 placeholder:text-ink-400 transition-all focus:border-brand-ring focus:outline-none focus:ring-2 focus:ring-brand-tint select-text"
         />
-        <button onClick={lookup} disabled={pending} className="h-11 px-4 rounded-lg border-[0.5px] border-ink-200 text-[13.5px] font-medium hover:bg-ink-50 cursor-pointer">{pending ? "…" : "Find"}</button>
+        </div>
+        <button onClick={lookup} disabled={pending} className="h-11 px-4 rounded-lg bg-white border border-ink-200 text-[13px] font-medium text-ink-600 hover:bg-ink-50 hover:text-ink-900 transition-colors cursor-pointer">{pending ? "…" : "Find"}</button>
       </div>
       {creating && (
         <form
-          className="rounded-xl bg-ink-50 p-3 grid gap-2"
+          className="rounded-xl bg-ink-50 border border-ink-100 p-3 grid gap-2 animate-[zeno-pop_0.18s_ease-out]"
           onSubmit={(e) => {
             e.preventDefault();
             start(async () => {
@@ -642,7 +702,7 @@ function CustomerSlot({ customer, onChange, phoneRef }: { customer: TillCustomer
           }}
         >
           <span className="text-[12.5px] text-ink-600">New customer. Their name is optional.</span>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="h-10 rounded-lg bg-white px-3 text-[14px] border-[0.5px] border-ink-200 select-text" />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="h-10 rounded-lg bg-white px-3 text-[14px] border border-ink-200 select-text" />
           <label className="flex items-start gap-2 text-[12.5px] text-ink-600">
             <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5" />
             Customer agrees to receive offers by SMS (receipts are always sent)
@@ -669,11 +729,11 @@ function DiscountButton({ currentCents, maxCents, limitCents, onSet }: { current
       />
     );
   }
-  if (!open) return <button className="text-brand-700 underline cursor-pointer" onClick={() => { setValue(currentCents ? String(currentCents / 100) : ""); setOpen(true); }}>{currentCents ? "Edit discount" : "Add discount"}</button>;
+  if (!open) return <button className="font-medium text-brand-700 hover:underline cursor-pointer" onClick={() => { setValue(currentCents ? String(currentCents / 100) : ""); setOpen(true); }}>{currentCents ? "Edit discount" : "Add discount"}</button>;
   return (
-    <div className="fixed inset-0 z-40 grid place-items-center bg-black/30 p-4" onClick={() => setOpen(false)}>
+    <div className="fixed inset-0 z-40 grid place-items-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setOpen(false)}>
       <form
-        className="card p-5 w-full max-w-xs grid gap-3"
+        className="card rounded-2xl shadow-xl animate-[zeno-pop_0.18s_ease-out] p-5 w-full max-w-xs grid gap-3"
         onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => {
           e.preventDefault();
@@ -686,13 +746,13 @@ function DiscountButton({ currentCents, maxCents, limitCents, onSet }: { current
           setOpen(false);
         }}
       >
-        <h2 className="text-[15px] font-semibold">Discount on this sale</h2>
-        <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} placeholder="e.g. 100 or 10%" className="h-11 rounded-lg bg-white px-3 text-[16px] tnum border-[0.5px] border-ink-200 select-text" />
+        <h2 className="text-[13.5px] font-semibold">Discount on this sale</h2>
+        <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} placeholder="e.g. 100 or 10%" className="h-11 rounded-lg bg-white px-3 text-[16px] tnum border border-ink-200 select-text" />
         {limitCents !== null && <p className="text-[12px] text-ink-400">Above KES {kes(limitCents)} the owner enters their PIN.</p>}
         {error && <p className="text-bad text-[12.5px]">{error}</p>}
         <div className="flex gap-2">
-          <button className="h-10 flex-1 rounded-lg bg-brand text-brand-ink font-semibold cursor-pointer">Apply</button>
-          {currentCents > 0 && <button type="button" onClick={() => { onSet(0, null); setOpen(false); }} className="h-10 px-3 rounded-lg border-[0.5px] border-ink-200 cursor-pointer">Remove</button>}
+          <button className="h-10 flex-1 rounded-lg bg-brand text-brand-ink font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.12)] hover:bg-brand-600 active:scale-[0.99] transition-all cursor-pointer">Apply</button>
+          {currentCents > 0 && <button type="button" onClick={() => { onSet(0, null); setOpen(false); }} className="h-10 px-3 rounded-lg border border-ink-200 cursor-pointer">Remove</button>}
         </div>
       </form>
     </div>
@@ -706,18 +766,18 @@ function VariantPicker({ product, priceOf, onPick, onClose }: { product: TillPro
     return () => window.removeEventListener("keydown", k);
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-40 grid place-items-center bg-black/30 p-4" onClick={onClose}>
-      <div className="card p-5 w-full max-w-2xl max-h-[80vh] overflow-y-auto grid gap-4" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-40 grid place-items-center bg-black/40 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="card rounded-2xl shadow-xl animate-[zeno-pop_0.18s_ease-out] p-5 w-full max-w-2xl max-h-[80vh] overflow-y-auto grid gap-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-baseline gap-3">
-          <h2 className="text-[17px] font-semibold">{product.name}</h2>
+          <h2 className="text-[15px] font-semibold">{product.name}</h2>
           <span className="text-[12.5px] text-ink-400">Pick a {product.optionNames.join(" / ").toLowerCase() || "version"}</span>
         </div>
         <div className="grid gap-2.5 grid-cols-[repeat(auto-fill,minmax(130px,1fr))]">
           {product.variants.map((v) => (
-            <button key={v.id} onClick={() => onPick(v)} className="rounded-xl border-[0.5px] border-ink-200 p-3 grid gap-2 text-left hover:border-brand cursor-pointer">
-              <span className="h-10 rounded-md" style={{ background: v.swatchHex ?? "var(--color-ink-50)" }} />
+            <button key={v.id} onClick={() => onPick(v)} className="rounded-xl bg-white border border-ink-200 p-3 grid gap-2 text-left hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.07)] active:scale-[0.98] transition-all duration-200 cursor-pointer">
+              <span className="h-10 rounded-lg" style={{ background: v.swatchHex ?? "var(--color-ink-50)" }} />
               <span className="text-[13.5px] font-medium">{v.label || "Standard"}</span>
-              <span className="text-[12px] text-ink-400 tnum">{priceOf(v) > 0 ? kes(priceOf(v)) : "No price"} · {v.onHand} in stock</span>
+              <span className="text-[11.5px] text-ink-400 tnum"><span className="text-[13px] font-semibold text-ink-900">{priceOf(v) > 0 ? kes(priceOf(v)) : "No price"}</span> · {v.onHand} in stock</span>
             </button>
           ))}
         </div>
@@ -790,19 +850,19 @@ function PaySheet({ totalCents, customer, exchange, onClose, submit }: { totalCe
     t.method === "cash" ? "Cash" : t.method === "mpesa" ? `M-Pesa ${t.mpesaCode}` : t.method === "points" ? "Loyalty points" : t.method === "exchange" ? "Exchange credit" : "On account";
 
   return (
-    <div className="fixed inset-0 z-40 grid place-items-center bg-black/30 p-4" onClick={() => !pending && onClose()}>
-      <div className="card p-6 w-full max-w-md grid gap-4" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-40 grid place-items-center bg-black/40 backdrop-blur-sm p-4" onClick={() => !pending && onClose()}>
+      <div className="card rounded-2xl shadow-xl animate-[zeno-pop_0.18s_ease-out] p-6 w-full max-w-md grid gap-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-baseline">
-          <h2 className="text-[17px] font-semibold">Take payment</h2>
+          <h2 className="text-[15px] font-semibold">Take payment</h2>
           <span className="text-[26px] font-semibold tnum tracking-tight">{kes(totalCents)}</span>
         </div>
 
         {tenders.length > 0 && (
           <ul className="grid gap-1.5 text-[13.5px]">
             {tenders.map((t, i) => (
-              <li key={i} className="flex justify-between items-center rounded-lg bg-ink-50 px-3 py-2">
+              <li key={i} className="flex justify-between items-center rounded-lg bg-ink-50 border border-ink-100 px-3 py-2">
                 <span>{tenderLabel(t)}</span>
-                <span className="flex items-center gap-3 tnum">{kes(t.amountCents)}<button className="text-ink-400 hover:text-bad cursor-pointer" onClick={() => setTenders((x) => x.filter((_, j) => j !== i))}>✕</button></span>
+                <span className="flex items-center gap-3 tnum">{kes(t.amountCents)}<button aria-label="Remove payment" className="size-6 rounded-full grid place-items-center text-ink-400 hover:text-bad hover:bg-red-50 cursor-pointer" onClick={() => setTenders((x) => x.filter((_, j) => j !== i))}><X aria-hidden="true" className="size-3.5" /></button></span>
               </li>
             ))}
           </ul>
@@ -812,22 +872,22 @@ function PaySheet({ totalCents, customer, exchange, onClose, submit }: { totalCe
           <>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {methods.map((m) => (
-                <button key={m.key} onClick={() => setMethod(m.key)} className={`h-11 rounded-lg text-[14px] font-medium cursor-pointer border-[0.5px] ${method === m.key ? "bg-brand text-brand-ink border-transparent" : "bg-white border-ink-200 hover:bg-ink-50"}`}>{m.label}</button>
+                <button key={m.key} onClick={() => setMethod(m.key)} className={`h-11 rounded-lg text-[13.5px] font-medium cursor-pointer border transition-all ${method === m.key ? "bg-brand text-brand-ink border-transparent shadow-[0_1px_2px_rgba(0,0,0,0.12)]" : "bg-white text-ink-600 border-ink-200 hover:bg-ink-50 hover:text-ink-900"}`}>{m.label}</button>
               ))}
             </div>
             <label className="grid gap-1 text-[12.5px] text-ink-600">
               Amount (KES) — leave blank for the full {kes(remaining)}
-              <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder={kes(remaining)} className="h-11 rounded-lg bg-white px-3 text-[16px] tnum border-[0.5px] border-ink-200 select-text" />
+              <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder={kes(remaining)} className="h-11 rounded-lg bg-white px-3 text-[16px] tnum border border-ink-200 select-text" />
             </label>
             {method === "cash" && (
               <div className="grid gap-2">
                 <label className="grid gap-1 text-[12.5px] text-ink-600">
                   Cash handed over
-                  <input autoFocus value={cashGiven} onChange={(e) => setCashGiven(e.target.value)} inputMode="decimal" className="h-11 rounded-lg bg-white px-3 text-[16px] tnum border-[0.5px] border-ink-200 select-text" />
+                  <input autoFocus value={cashGiven} onChange={(e) => setCashGiven(e.target.value)} inputMode="decimal" className="h-11 rounded-lg bg-white px-3 text-[16px] tnum border border-ink-200 select-text" />
                 </label>
                 <div className="flex gap-2 flex-wrap">
                   {[amountCents, 50_000, 100_000, 200_000].filter((v, i, a) => v > 0 && v >= amountCents && a.indexOf(v) === i).map((v) => (
-                    <button key={v} onClick={() => setCashGiven(String(v / 100))} className="h-9 px-3 rounded-full border-[0.5px] border-ink-200 text-[13px] tnum hover:bg-ink-50 cursor-pointer">{v === amountCents ? "Exact" : kes(v)}</button>
+                    <button key={v} onClick={() => setCashGiven(String(v / 100))} className="h-9 px-3 rounded-full border border-ink-200 text-[13px] tnum hover:bg-ink-50 cursor-pointer">{v === amountCents ? "Exact" : kes(v)}</button>
                   ))}
                 </div>
                 {cashChange > 0 && <p className="text-[15px]">Change: <span className="font-semibold text-good tnum">{kes(cashChange)}</span></p>}
@@ -836,13 +896,13 @@ function PaySheet({ totalCents, customer, exchange, onClose, submit }: { totalCe
             {method === "mpesa" && (
               <label className="grid gap-1 text-[12.5px] text-ink-600">
                 M-Pesa code from the customer's SMS
-                <input autoFocus value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={10} placeholder="SJK4H7QX2M" className="h-11 rounded-lg bg-white px-3 text-[16px] tracking-widest uppercase border-[0.5px] border-ink-200 select-text" />
+                <input autoFocus value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={10} placeholder="SJK4H7QX2M" className="h-11 rounded-lg bg-white px-3 text-[16px] tracking-widest uppercase border border-ink-200 select-text" />
               </label>
             )}
             {method === "credit" && <p className="text-[13px] text-ink-600">KES {kes(customer.creditAvailableCents)} of credit available.</p>}
             {method === "points" && <p className="text-[13px] text-ink-600">{fmtPoints(customer.pointsBalance)} points = KES {kes(customer.pointsValueCents)} available. Points aren't earned on the part paid with points.</p>}
             <div className="grid grid-cols-2 gap-2">
-              <button disabled={pending} onClick={() => addTender()} className="h-12 rounded-lg border-[0.5px] border-ink-200 font-medium hover:bg-ink-50 cursor-pointer">Split payment</button>
+              <button disabled={pending} onClick={() => addTender()} className="h-12 rounded-lg border border-ink-200 font-medium hover:bg-ink-50 cursor-pointer">Split payment</button>
               <button
                 disabled={pending}
                 onClick={() => {
@@ -850,14 +910,14 @@ function PaySheet({ totalCents, customer, exchange, onClose, submit }: { totalCe
                   const list = addTender();
                   if (list) finish(list);
                 }}
-                className="h-12 rounded-lg bg-brand text-brand-ink font-semibold cursor-pointer disabled:opacity-50"
+                className="h-12 rounded-lg bg-brand text-brand-ink font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.12)] hover:bg-brand-600 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-50"
               >
                 {pending ? "Saving…" : "Complete sale"}
               </button>
             </div>
           </>
         ) : (
-          <button disabled={pending} onClick={() => finish(tenders)} className="h-12 rounded-lg bg-brand text-brand-ink font-semibold cursor-pointer disabled:opacity-50">{pending ? "Saving…" : "Complete sale"}</button>
+          <button disabled={pending} onClick={() => finish(tenders)} className="h-12 rounded-lg bg-brand text-brand-ink font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.12)] hover:bg-brand-600 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-50">{pending ? "Saving…" : "Complete sale"}</button>
         )}
         {error && <p role="alert" className="text-bad text-[13px]">{error}</p>}
       </div>
@@ -872,9 +932,10 @@ function DoneSheet({ receiptNo, changeCents, totalCents, pointsEarned, pointsBal
     return () => window.removeEventListener("keydown", k);
   }, [onNext]);
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4">
-      <div className="card p-7 w-full max-w-sm grid gap-4 text-center">
-        <span className="text-[13px] text-ink-400">Sale {receiptNo} · KES {kes(totalCents)}</span>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="card rounded-2xl shadow-xl animate-[zeno-pop_0.18s_ease-out] p-7 w-full max-w-sm grid gap-4 text-center">
+        <span className="justify-self-center inline-flex px-2.5 py-0.5 rounded-full text-[11px] font-medium border bg-emerald-50 text-emerald-700 border-emerald-200">Sale {receiptNo} saved</span>
+        <span className="text-[12.5px] text-ink-400 tnum">KES {kes(totalCents)}</span>
         {changeCents > 0 ? (
           <div className="grid gap-1"><span className="text-[14px] text-ink-600">Give change</span><span className="text-[40px] font-semibold tnum tracking-tight text-good">{kes(changeCents)}</span></div>
         ) : (
@@ -884,8 +945,8 @@ function DoneSheet({ receiptNo, changeCents, totalCents, pointsEarned, pointsBal
           <span className="text-[13px] text-ink-600">+{fmtPoints(pointsEarned)} points · balance {fmtPoints(pointsBalance)}</span>
         )}
         <div className="grid grid-cols-2 gap-2">
-          <button onClick={onReprint} className="h-12 rounded-lg border-[0.5px] border-ink-200 font-medium hover:bg-ink-50 cursor-pointer">Print again</button>
-          <button autoFocus onClick={onNext} className="h-12 rounded-lg bg-brand text-brand-ink font-semibold cursor-pointer">New sale ↵</button>
+          <button onClick={onReprint} className="h-12 rounded-lg border border-ink-200 font-medium hover:bg-ink-50 cursor-pointer">Print again</button>
+          <button autoFocus onClick={onNext} className="h-12 rounded-lg bg-brand text-brand-ink font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.12)] hover:bg-brand-600 active:scale-[0.99] transition-all cursor-pointer">New sale ↵</button>
         </div>
       </div>
     </div>

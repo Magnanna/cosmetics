@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { ArrowLeftRight, BarChart3, ChevronDown, HandCoins, LockKeyhole, ReceiptText, Wallet, X, type LucideIcon } from "lucide-react";
 import { cashMovement, discardParked, endShift, findSale, parkedList, payOnAccount, payOutExchangeCredit, recallSale, recentSales, returnItems, switchTillUser, tillPeople, xReport, type ParkedCart, type ParkedSummary, type RecentSale, type ReturnableSale, type TillCustomer, type TillPerson } from "./actions";
 import type { ShiftSummary } from "@/lib/cashup";
 import { parseKES } from "@/lib/money";
@@ -14,9 +15,9 @@ export interface ExchangeCredit {
 }
 
 const kes = (c: number) => `${c < 0 ? "-" : ""}${Math.floor(Math.abs(c) / 100).toLocaleString("en-KE")}.${String(Math.abs(c) % 100).padStart(2, "0")}`;
-const inputCls = "h-11 w-full rounded-lg bg-white px-3 text-[15px] tnum border-[0.5px] border-ink-200 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-tint select-text";
-const primary = "h-11 rounded-lg bg-brand text-brand-ink font-semibold cursor-pointer disabled:opacity-50 px-4";
-const secondary = "h-11 rounded-lg border-[0.5px] border-ink-200 font-medium hover:bg-ink-50 cursor-pointer px-4";
+const inputCls = "h-11 w-full rounded-lg bg-white px-3 text-[15px] tnum border border-ink-200 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-tint select-text";
+const primary = "h-11 rounded-lg bg-brand text-brand-ink font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.12)] hover:bg-brand-600 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-50 px-4";
+const secondary = "h-11 rounded-lg bg-white border border-ink-200 font-medium text-ink-600 hover:bg-ink-50 hover:text-ink-900 transition-colors cursor-pointer px-4";
 
 function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   useEffect(() => {
@@ -25,13 +26,15 @@ function Modal({ title, onClose, children, wide }: { title: string; onClose: () 
     return () => window.removeEventListener("keydown", k);
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4" onClick={onClose}>
-      <div className={`card p-5 w-full ${wide ? "max-w-2xl" : "max-w-md"} max-h-[90vh] overflow-y-auto grid gap-4 content-start`} onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-between items-start gap-3">
-          <h2 className="text-[17px] font-semibold">{title}</h2>
-          <button onClick={onClose} aria-label="Close" className="text-ink-400 hover:text-ink-900 cursor-pointer">✕</button>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className={`card rounded-2xl shadow-xl w-full ${wide ? "max-w-2xl" : "max-w-md"} max-h-[90vh] flex flex-col overflow-hidden animate-[zeno-pop_0.18s_ease-out]`} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between gap-3 px-5 py-3.5 hairline-b shrink-0">
+          <h2 className="text-[14px] font-semibold">{title}</h2>
+          <button onClick={onClose} aria-label="Close" className="size-7 grid place-items-center rounded-full text-ink-400 hover:bg-ink-50 hover:text-ink-700 transition-colors cursor-pointer">
+            <X aria-hidden="true" className="size-4" />
+          </button>
         </div>
-        {children}
+        <div className="flex-1 min-h-0 overflow-y-auto p-5 grid gap-4 content-start">{children}</div>
       </div>
     </div>
   );
@@ -80,21 +83,29 @@ export function MoreMenu(props: {
   }, []);
   if (!props.registerId) return null;
   const registerId = props.registerId;
-  const items: { key: Exclude<Dialog, null>; label: string; show: boolean }[] = [
-    { key: "recent", label: "Recent sales / reprint", show: true },
-    { key: "returns", label: "Returns & exchanges", show: true },
-    { key: "account", label: "Payment on account", show: true },
-    { key: "cash", label: "Cash in / out", show: true },
-    { key: "x", label: "Shift so far (X-report)", show: true },
-    { key: "close", label: "Close the till", show: true },
+  const items: { key: Exclude<Dialog, null>; label: string; show: boolean; icon: LucideIcon }[] = [
+    { key: "recent", label: "Recent sales / reprint", show: true, icon: ReceiptText },
+    { key: "returns", label: "Returns & exchanges", show: true, icon: ArrowLeftRight },
+    { key: "account", label: "Payment on account", show: true, icon: HandCoins },
+    { key: "cash", label: "Cash in / out", show: true, icon: Wallet },
+    { key: "x", label: "Shift so far (X-report)", show: true, icon: BarChart3 },
+    { key: "close", label: "Close the till", show: true, icon: LockKeyhole },
   ];
   return (
     <div ref={ref} className="relative">
-      <button onClick={() => setOpen((o) => !o)} className="text-ink-600 hover:text-ink-900 cursor-pointer">More ▾</button>
+      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className={`h-9 px-3 rounded-full inline-flex items-center gap-1.5 transition-colors cursor-pointer ${open ? "bg-white text-ink-900 shadow-[0_1px_2px_rgba(0,0,0,0.05)]" : "hover:bg-white/70 hover:text-ink-900"}`}>
+        More
+        <ChevronDown aria-hidden="true" className={`size-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
       {open && (
-        <ul className="absolute right-0 top-7 z-40 card py-1 w-56">
+        <ul className="absolute right-0 top-full mt-2 z-40 w-60 bg-white rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.15)] border border-ink-100 py-1.5 animate-[zeno-pop_0.16s_ease-out]">
           {items.filter((i) => i.show).map((i) => (
-            <li key={i.key}><button onClick={() => { setDialog(i.key); setOpen(false); }} className="w-full text-left px-3 py-2 text-[13.5px] hover:bg-ink-50 cursor-pointer">{i.label}</button></li>
+            <li key={i.key}>
+              <button onClick={() => { setDialog(i.key); setOpen(false); }} className={`w-full flex items-center gap-2.5 text-left px-3.5 py-2 text-[13px] hover:bg-ink-50 transition-colors cursor-pointer ${i.key === "close" ? "text-red-700" : "text-ink-900"}`}>
+                <i.icon aria-hidden="true" strokeWidth={1.75} className={`size-4 ${i.key === "close" ? "" : "text-ink-400"}`} />
+                {i.label}
+              </button>
+            </li>
           ))}
         </ul>
       )}
@@ -164,7 +175,7 @@ function CashInOut({ registerId, expenseAccounts, onDone, onClose }: { registerI
     <Modal title="Cash in / out of the drawer" onClose={onClose}>
       <div className="grid grid-cols-2 gap-2">
         {REASONS.map((r) => (
-          <button key={r.key} onClick={() => setReason(r.key)} className={`h-10 rounded-lg text-[13px] font-medium cursor-pointer border-[0.5px] ${reason === r.key ? "bg-brand text-brand-ink border-transparent" : "bg-white border-ink-200 hover:bg-ink-50"}`}>{r.label}</button>
+          <button key={r.key} onClick={() => setReason(r.key)} className={`h-10 rounded-lg text-[13px] font-medium cursor-pointer border ${reason === r.key ? "bg-brand text-brand-ink border-transparent" : "bg-white border-ink-200 hover:bg-ink-50"}`}>{r.label}</button>
         ))}
       </div>
       <label className="grid gap-1 text-[12.5px] text-ink-600">Amount (KES)<input autoFocus inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputCls} /></label>
@@ -213,7 +224,7 @@ function PayOnAccount({ registerId, customer, onDone, onClose }: { registerId: n
         <>
           <div className="grid grid-cols-2 gap-2">
             {(["mpesa", "cash"] as const).map((m) => (
-              <button key={m} onClick={() => setMethod(m)} className={`h-10 rounded-lg text-[13.5px] font-medium cursor-pointer border-[0.5px] ${method === m ? "bg-brand text-brand-ink border-transparent" : "bg-white border-ink-200"}`}>{m === "mpesa" ? "M-Pesa" : "Cash"}</button>
+              <button key={m} onClick={() => setMethod(m)} className={`h-10 rounded-lg text-[13.5px] font-medium cursor-pointer border ${method === m ? "bg-brand text-brand-ink border-transparent" : "bg-white border-ink-200"}`}>{m === "mpesa" ? "M-Pesa" : "Cash"}</button>
             ))}
           </div>
           <label className="grid gap-1 text-[12.5px] text-ink-600">Amount (KES)<input autoFocus inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={kes(customer.creditOwedCents)} className={inputCls} /></label>
@@ -300,7 +311,7 @@ function Returns({ registerId, role, onMessage, onExchange, onClose }: { registe
           {found && found.length > 1 && (
             <ul className="grid gap-1.5">
               {found.map((f) => (
-                <li key={f.saleId}><button onClick={() => setSale(f)} className="w-full text-left rounded-lg border-[0.5px] border-ink-200 px-3 py-2 hover:bg-ink-50 cursor-pointer text-[13.5px]">{f.receiptNo} · {new Date(f.createdAt).toLocaleString("en-KE", { timeZone: "Africa/Nairobi", dateStyle: "medium", timeStyle: "short" })} · {f.lines.length} items</button></li>
+                <li key={f.saleId}><button onClick={() => setSale(f)} className="w-full text-left rounded-lg border border-ink-200 px-3 py-2 hover:bg-ink-50 cursor-pointer text-[13.5px]">{f.receiptNo} · {new Date(f.createdAt).toLocaleString("en-KE", { timeZone: "Africa/Nairobi", dateStyle: "medium", timeStyle: "short" })} · {f.lines.length} items</button></li>
               ))}
             </ul>
           )}
@@ -317,12 +328,12 @@ function Returns({ registerId, role, onMessage, onExchange, onClose }: { registe
           {ageHours > 24 && <p className="text-[13px] text-warn">This sale is {Math.floor(ageHours)} hours old — past the 24-hour window. Only the owner can approve it.</p>}
           <ul className="grid gap-2">
             {sale.lines.map((l) => (
-              <li key={l.saleLineId} className="rounded-lg border-[0.5px] border-ink-200 p-3 grid gap-2 text-[13.5px]">
+              <li key={l.saleLineId} className="rounded-lg border border-ink-200 p-3 grid gap-2 text-[13.5px]">
                 <div className="flex justify-between gap-3"><span className="font-medium">{l.description}</span><span className="tnum text-ink-600">{kes(l.unitPaidCents)} each</span></div>
                 {l.returnable === 0 ? <span className="text-[12.5px] text-ink-400">Already returned</span> : (
                   <div className="flex flex-wrap items-center gap-4">
                     <label className="flex items-center gap-2">Return
-                      <select value={qty[l.saleLineId] ?? 0} onChange={(e) => setQty((q) => ({ ...q, [l.saleLineId]: Number(e.target.value) }))} className="h-9 rounded-md border-[0.5px] border-ink-200 px-2">
+                      <select value={qty[l.saleLineId] ?? 0} onChange={(e) => setQty((q) => ({ ...q, [l.saleLineId]: Number(e.target.value) }))} className="h-9 rounded-lg border border-ink-200 px-2">
                         {Array.from({ length: l.returnable + 1 }, (_, i) => <option key={i} value={i}>{i}</option>)}
                       </select>
                       of {l.returnable}
@@ -339,8 +350,8 @@ function Returns({ registerId, role, onMessage, onExchange, onClose }: { registe
             ))}
           </ul>
           <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => setKind("exchange")} className={`h-11 rounded-lg text-[13.5px] font-medium cursor-pointer border-[0.5px] ${kind === "exchange" ? "bg-brand text-brand-ink border-transparent" : "bg-white border-ink-200"}`}>Exchange for other items</button>
-            <button onClick={() => setKind("refund")} className={`h-11 rounded-lg text-[13.5px] font-medium cursor-pointer border-[0.5px] ${kind === "refund" ? "bg-brand text-brand-ink border-transparent" : "bg-white border-ink-200"}`}>Money back (owner)</button>
+            <button onClick={() => setKind("exchange")} className={`h-11 rounded-lg text-[13.5px] font-medium cursor-pointer border ${kind === "exchange" ? "bg-brand text-brand-ink border-transparent" : "bg-white border-ink-200"}`}>Exchange for other items</button>
+            <button onClick={() => setKind("refund")} className={`h-11 rounded-lg text-[13.5px] font-medium cursor-pointer border ${kind === "refund" ? "bg-brand text-brand-ink border-transparent" : "bg-white border-ink-200"}`}>Money back (owner)</button>
           </div>
           {kind === "refund" && (
             <label className="grid gap-1 text-[12.5px] text-ink-600">
@@ -430,7 +441,7 @@ function CloseTill({ registerId, onClosed, onClose }: { registerId: number; onCl
           <label key={d} className="flex items-center justify-between gap-3 text-[14px]">
             <span className="tnum w-24">KES {(d / 100).toLocaleString("en-KE")}</span>
             <span className="text-ink-400">×</span>
-            <input inputMode="numeric" value={counts[d] ?? ""} onChange={(e) => setCounts((c) => ({ ...c, [d]: e.target.value.replace(/\D/g, "") }))} className="h-10 w-20 rounded-md bg-white px-2 text-right tnum border-[0.5px] border-ink-200" aria-label={`Number of KES ${d / 100}`} />
+            <input inputMode="numeric" value={counts[d] ?? ""} onChange={(e) => setCounts((c) => ({ ...c, [d]: e.target.value.replace(/\D/g, "") }))} className="h-10 w-20 rounded-lg bg-white px-2 text-right tnum border border-ink-200" aria-label={`Number of KES ${d / 100}`} />
             <span className="tnum w-24 text-right text-ink-600">{kes((Number(counts[d]) || 0) * d)}</span>
           </label>
         ))}
@@ -469,9 +480,12 @@ export function SwitchUser({ onSwitched, onClose }: { onSwitched: (name: string)
         <div className="grid grid-cols-2 gap-2">
           {people === null && !error && <p className="text-[13px] text-ink-400 col-span-2">Loading…</p>}
           {people?.map((p) => (
-            <button key={p.id} disabled={!p.hasPin} onClick={() => { setWho(p); setPin(""); setError(null); }} className="rounded-xl border-[0.5px] border-ink-200 p-3 text-left hover:border-brand cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-              <div className="font-semibold text-[14px]">{p.name}</div>
-              <div className="text-[12px] text-ink-400 capitalize">{p.hasPin ? p.role : "No PIN yet"}</div>
+            <button key={p.id} disabled={!p.hasPin} onClick={() => { setWho(p); setPin(""); setError(null); }} className="rounded-xl bg-white border border-ink-200 p-3 text-left flex items-center gap-2.5 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.07)] active:scale-[0.98] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none">
+              <span className="size-9 shrink-0 rounded-full bg-brand text-brand-ink grid place-items-center text-[13px] font-semibold">{p.name.slice(0, 1).toUpperCase()}</span>
+              <span className="min-w-0">
+              <div className="font-semibold text-[13.5px] truncate">{p.name}</div>
+              <div className="text-[11.5px] text-ink-400 capitalize">{p.hasPin ? p.role : "No PIN yet"}</div>
+              </span>
             </button>
           ))}
         </div>
@@ -505,10 +519,10 @@ export function ParkedSales({ registerId, cartHasItems, onRecall, onClose }: { r
       {rows?.length === 0 && <p className="text-[13px] text-ink-400">Nothing parked.</p>}
       <ul className="grid gap-2">
         {rows?.map((r) => (
-          <li key={r.id} className="flex items-center justify-between gap-3 rounded-lg border-[0.5px] border-ink-200 px-3 py-2.5 text-[13.5px]">
+          <li key={r.id} className="flex items-center justify-between gap-3 rounded-lg bg-white border border-ink-200 px-3 py-2.5 text-[13px] hover:bg-ink-50/60 transition-colors">
             <span><b>{r.label}</b><span className="text-ink-400"> · {r.items} item{r.items === 1 ? "" : "s"} · {new Date(r.createdAt).toLocaleTimeString("en-KE", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit" })}</span></span>
             <span className="flex gap-2">
-              <button disabled={pending || cartHasItems} onClick={() => start(async () => { const x = await recallSale(r.id); if (x.ok) onRecall(x.data.cart, x.data.customer); else setError(x.error); })} className="h-9 px-3 rounded-lg bg-brand text-brand-ink text-[13px] font-medium cursor-pointer disabled:opacity-40">Take back</button>
+              <button disabled={pending || cartHasItems} onClick={() => start(async () => { const x = await recallSale(r.id); if (x.ok) onRecall(x.data.cart, x.data.customer); else setError(x.error); })} className="h-9 px-3 rounded-lg bg-brand text-brand-ink text-[13px] font-medium shadow-[0_1px_2px_rgba(0,0,0,0.12)] hover:bg-brand-600 transition-colors cursor-pointer disabled:opacity-40">Take back</button>
               <button disabled={pending} onClick={() => start(async () => { await discardParked(r.id); load(); })} className="h-9 px-2 text-[12.5px] text-ink-400 hover:text-bad cursor-pointer">Remove</button>
             </span>
           </li>
@@ -538,12 +552,12 @@ export function RecentSales({ onReprint, onClose }: { onReprint: (token: string)
       {rows?.length === 0 && <p className="text-[13px] text-ink-400">No sales found.</p>}
       <ul className="grid gap-1.5">
         {rows?.map((r) => (
-          <li key={r.id} className="flex items-center justify-between gap-3 rounded-lg border-[0.5px] border-ink-200 px-3 py-2 text-[13.5px]">
-            <span><b>{r.receiptNo}</b><span className="text-ink-400"> · {new Date(r.createdAt).toLocaleString("en-KE", { timeZone: "Africa/Nairobi", dateStyle: "short", timeStyle: "short" })} · {r.customer}</span>{r.status !== "completed" && <span className="text-warn"> · {r.status.replace("_", " ")}</span>}</span>
+          <li key={r.id} className="flex items-center justify-between gap-3 rounded-lg bg-white border border-ink-200 px-3 py-2 text-[13px] hover:bg-ink-50/60 transition-colors">
+            <span><b>{r.receiptNo}</b><span className="text-ink-400"> · {new Date(r.createdAt).toLocaleString("en-KE", { timeZone: "Africa/Nairobi", dateStyle: "short", timeStyle: "short" })} · {r.customer}</span>{r.status !== "completed" && <span className="ml-1.5 inline-flex px-2 py-0.5 rounded-full text-[10.5px] font-medium border bg-amber-50 text-amber-700 border-amber-200 capitalize">{r.status.replace("_", " ")}</span>}</span>
             <span className="flex items-center gap-3">
               <span className="tnum font-medium">{kes(r.totalCents)}</span>
               <a href={`/r/${r.token}`} target="_blank" className="text-[12.5px] underline text-ink-600">View</a>
-              <button onClick={() => onReprint(r.token)} className="h-8 px-3 rounded-md border-[0.5px] border-ink-200 text-[12.5px] cursor-pointer hover:bg-ink-50">Reprint</button>
+              <button onClick={() => onReprint(r.token)} className="h-8 px-3 rounded-lg border border-ink-200 text-[12.5px] cursor-pointer hover:bg-ink-50">Reprint</button>
             </span>
           </li>
         ))}

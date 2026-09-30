@@ -12,7 +12,7 @@ export function PayForm({ suppliers }: { suppliers: { id: number; name: string; 
   const owed = suppliers.find((s) => s.id === supplierId)?.owedCents ?? 0;
   return (
     <form ref={formRef} action={action} className="card p-5 grid gap-3">
-      <h2 className="text-[15px] font-semibold">Pay a supplier</h2>
+      <h2 className="text-[13.5px] font-semibold">Pay a supplier</h2>
       <Field label="Supplier">
         <Select id="p-supplier" name="supplierId" value={supplierId} onChange={(e) => setSupplierId(Number(e.target.value))}>
           {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}

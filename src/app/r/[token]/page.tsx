@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getReceiptByToken } from "@/lib/receipt";
+import { brandPalette } from "@/lib/brand";
 import { AutoPrint } from "./auto-print";
 
 export const dynamic = "force-dynamic";
@@ -16,8 +17,12 @@ export default async function ReceiptPage({ params, searchParams }: { params: Pr
     <main className="receipt mx-auto my-6 w-[80mm] max-w-full bg-white px-4 py-5 text-[12.5px] leading-snug text-black print:my-0 print:px-1 print:shadow-none shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
       <style>{`@page { size: 80mm auto; margin: 3mm; } @media print { html, body { background: white; } }`}</style>
       {print === "1" && <AutoPrint />}
-      <div className="text-center grid gap-0.5">
-        <div className="text-[16px] font-bold">{r.shop.name}</div>
+      <div className="text-center grid gap-0.5 justify-items-center">
+        {r.shop.logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={r.shop.logoUrl} alt={r.shop.name} className="max-h-20 max-w-[60%] object-contain mb-1.5 print:grayscale" />
+        )}
+        <div className="text-[16px] font-bold print:!text-black" style={{ color: brandPalette(r.shop.brandColor).brand700 }}>{r.shop.name}</div>
         {r.shop.address && <div>{r.shop.address}</div>}
         {r.shop.phone && <div>Tel {r.shop.phone}</div>}
         {r.shop.kraPin && <div>PIN {r.shop.kraPin}</div>}

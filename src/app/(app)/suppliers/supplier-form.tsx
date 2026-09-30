@@ -12,7 +12,7 @@ export function SupplierForm() {
   }, [state]);
   return (
     <form ref={formRef} action={action} className="card p-5 grid gap-3">
-      <h2 className="text-[15px] font-semibold">Add supplier</h2>
+      <h2 className="text-[13.5px] font-semibold">Add supplier</h2>
       <Field label="Name"><Input id="s-name" name="name" placeholder="Tolaram East Africa" required /></Field>
       <Field label="Phone"><Input id="s-phone" name="phone" inputMode="tel" /></Field>
       <Field label="Email"><Input id="s-email" name="email" type="email" /></Field>

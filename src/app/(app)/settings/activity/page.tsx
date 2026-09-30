@@ -20,7 +20,7 @@ const LABELS: Record<string, string> = {
   "offer.create": "Created an offer", "offer.pause": "Paused an offer", "offer.resume": "Resumed an offer",
   "expense.create": "Recorded an expense", "transfer.create": "Moved money", "journal.post": "Posted a manual journal",
   "tot.accrue": "Recorded Turnover Tax", "tot.pay": "Paid Turnover Tax", "mpesa.import": "Imported an M-Pesa statement", "books.lock": "Closed / reopened the books",
-  "settings.update": "Changed shop settings", "team.add": "Added a staff login", "team.update": "Changed a staff login", "member.set_pin": "Set their PIN",
+  "settings.update": "Changed shop settings", "settings.brand": "Changed the logo or brand colour", "team.add": "Added a staff login", "team.update": "Changed a staff login", "member.set_pin": "Set their PIN",
   "till.switch_user": "Switched in at the till", "opening.add": "Entered an opening balance",
 };
 
@@ -66,19 +66,19 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
       <PageHeader title="Activity log" subtitle="Every sensitive change, who made it and when. Entries can't be edited or deleted." />
       <form className="flex flex-wrap items-end gap-2 mb-5">
         <label className="grid gap-1 text-[12px] text-ink-400">Who
-          <select name="who" defaultValue={sp.who ?? ""} className="h-9 rounded-md bg-white px-2 text-[13.5px] border-[0.5px] border-ink-200">
+          <select name="who" defaultValue={sp.who ?? ""} className="h-9 rounded-lg bg-white px-2 text-[13.5px] border border-ink-200">
             <option value="">Everyone</option>
             {staff.map((m) => <option key={m.id} value={m.id}>{m.name || m.email}</option>)}
           </select>
         </label>
         <label className="grid gap-1 text-[12px] text-ink-400">What
-          <select name="area" defaultValue={sp.area ?? ""} className="h-9 rounded-md bg-white px-2 text-[13.5px] border-[0.5px] border-ink-200">
+          <select name="area" defaultValue={sp.area ?? ""} className="h-9 rounded-lg bg-white px-2 text-[13.5px] border border-ink-200">
             {AREAS.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}
           </select>
         </label>
-        <label className="grid gap-1 text-[12px] text-ink-400">From<input type="date" name="from" defaultValue={from} className="h-9 rounded-md bg-white px-2 text-[13.5px] border-[0.5px] border-ink-200" /></label>
-        <label className="grid gap-1 text-[12px] text-ink-400">To<input type="date" name="to" defaultValue={to} className="h-9 rounded-md bg-white px-2 text-[13.5px] border-[0.5px] border-ink-200" /></label>
-        <button className="h-9 px-4 rounded-md bg-brand text-brand-ink text-[13px] font-medium cursor-pointer">Show</button>
+        <label className="grid gap-1 text-[12px] text-ink-400">From<input type="date" name="from" defaultValue={from} className="h-9 rounded-lg bg-white px-2 text-[13.5px] border border-ink-200" /></label>
+        <label className="grid gap-1 text-[12px] text-ink-400">To<input type="date" name="to" defaultValue={to} className="h-9 rounded-lg bg-white px-2 text-[13.5px] border border-ink-200" /></label>
+        <button className="h-9 px-4 rounded-lg bg-brand text-brand-ink text-[13px] font-medium cursor-pointer">Show</button>
       </form>
       <div className="card overflow-x-auto">
         <table className="w-full text-[13.5px]"><tbody>

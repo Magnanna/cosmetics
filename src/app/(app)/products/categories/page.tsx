@@ -16,7 +16,7 @@ export default async function CategoriesPage() {
           return (
             <div key={p.id} className="card p-4 grid gap-2 content-start">
               <div className="font-semibold text-[14px]">{p.name}</div>
-              {kids.length > 0 && <div className="flex flex-wrap gap-1.5">{kids.map((k) => <span key={k.id} className="text-[12px] px-2 py-0.5 rounded-full bg-ink-50 border-[0.5px] border-ink-100 text-ink-600">{k.name}</span>)}</div>}
+              {kids.length > 0 && <div className="flex flex-wrap gap-1.5">{kids.map((k) => <span key={k.id} className="text-[12px] px-2 py-0.5 rounded-full bg-ink-50 border border-ink-100 text-ink-600">{k.name}</span>)}</div>}
             </div>
           );
         })}

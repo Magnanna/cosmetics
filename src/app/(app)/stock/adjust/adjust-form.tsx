@@ -30,7 +30,7 @@ export function AdjustForm({ variants }: { variants: PickVariant[] }) {
 
   return (
     <form action={action} className="card p-5 grid gap-3">
-      <h2 className="text-[15px] font-semibold">New adjustment</h2>
+      <h2 className="text-[13.5px] font-semibold">New adjustment</h2>
       {picked ? (
         <div className="rounded-lg bg-ink-50 px-3 py-2.5 flex justify-between gap-3 text-[13.5px]">
           <span><span className="font-medium">{picked.label}</span><span className="text-ink-400"> · {picked.onHand} in stock</span></span>
@@ -43,7 +43,7 @@ export function AdjustForm({ variants }: { variants: PickVariant[] }) {
       {unknown && <p className="text-[12.5px] text-bad">Barcode {unknown} isn't on any product.</p>}
       <div className="grid grid-cols-2 gap-2">
         {(["out", "in"] as const).map((d) => (
-          <button key={d} type="button" onClick={() => setDirection(d)} className={`h-10 rounded-lg text-[13.5px] font-medium cursor-pointer border-[0.5px] ${direction === d ? "bg-brand text-brand-ink border-transparent" : "bg-white border-ink-200 hover:bg-ink-50"}`}>
+          <button key={d} type="button" onClick={() => setDirection(d)} className={`h-10 rounded-lg text-[13.5px] font-medium cursor-pointer border ${direction === d ? "bg-brand text-brand-ink border-transparent" : "bg-white border-ink-200 hover:bg-ink-50"}`}>
             {d === "out" ? "Remove stock" : "Add stock"}
           </button>
         ))}

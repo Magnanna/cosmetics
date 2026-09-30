@@ -63,11 +63,11 @@ export function OfferForm({ brands, categories, products }: { brands: { id: numb
 
   return (
     <div className="card p-5 grid gap-3">
-      <h2 className="text-[15px] font-semibold">New offer</h2>
+      <h2 className="text-[13.5px] font-semibold">New offer</h2>
       <Field label="Name customers see" hint="Shows on the till and receipt"><Input id="o-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Weekend Lips 20% off" /></Field>
       <div className="flex flex-wrap gap-1.5">
         {TYPES.map((x) => (
-          <button key={x.key} onClick={() => { setType(x.key); if (x.key === "fixed_price") setTargetKind("product"); }} className={`h-8 px-3 rounded-full text-[12.5px] cursor-pointer border-[0.5px] ${type === x.key ? "bg-brand text-brand-ink border-transparent" : "bg-white border-ink-200"}`}>{x.label}</button>
+          <button key={x.key} onClick={() => { setType(x.key); if (x.key === "fixed_price") setTargetKind("product"); }} className={`h-8 px-3 rounded-full text-[12.5px] cursor-pointer border ${type === x.key ? "bg-brand text-brand-ink border-transparent" : "bg-white border-ink-200"}`}>{x.label}</button>
         ))}
       </div>
       <div className="grid grid-cols-2 gap-3">

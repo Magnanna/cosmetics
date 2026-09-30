@@ -1,0 +1,1 @@
+ALTER TABLE "orgs" ADD COLUMN "logo_print" text;

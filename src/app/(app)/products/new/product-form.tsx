@@ -136,7 +136,7 @@ export function ProductForm({
 
       <Card className="p-5 grid gap-4">
         <div>
-          <h2 className="text-[15px] font-semibold">Shades, sizes and other options</h2>
+          <h2 className="text-[13.5px] font-semibold">Shades, sizes and other options</h2>
           <p className="text-[13px] text-ink-400">Leave blank if the product comes in only one version.</p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
@@ -151,7 +151,7 @@ export function ProductForm({
       </Card>
 
       <Card className="p-5 grid gap-4">
-        <h2 className="text-[15px] font-semibold">{hasOptions ? "Variants" : "Price, barcode and stock"}</h2>
+        <h2 className="text-[13.5px] font-semibold">{hasOptions ? "Variants" : "Price, barcode and stock"}</h2>
         {rows.map((r, i) => (
           <div key={r.key} className={`grid gap-3 ${i > 0 ? "hairline-t pt-4" : ""}`}>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -171,7 +171,7 @@ export function ProductForm({
                     <input
                       type="color"
                       aria-label="Swatch colour"
-                      className="h-9 w-10 rounded-md border-[0.5px] border-ink-200 bg-white cursor-pointer"
+                      className="h-9 w-10 rounded-lg border border-ink-200 bg-white cursor-pointer"
                       value={r.swatchHex || "#e9d6c6"}
                       onChange={(e) => update(r.key, { swatchHex: e.target.value })}
                     />

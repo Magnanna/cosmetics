@@ -4,6 +4,7 @@ import { inOrg, requirePage } from "@/lib/auth";
 import { openShiftFor } from "@/lib/shifts";
 import { loadOffers } from "@/lib/offers-db";
 import { TillApp, type TillProduct } from "./till-app";
+import { BrandStyle } from "@/components/brand-style";
 
 export const dynamic = "force-dynamic";
 
@@ -85,8 +86,11 @@ export default async function TillPage() {
   const topCategories = cats.filter((c) => c.parentId === null).map((c) => ({ id: c.id, name: c.name }));
 
   return (
+    <>
+    <BrandStyle color={s.org.brandColor} />
     <TillApp
       shopName={s.org.name}
+      logoUrl={s.org.logoUrl}
       cashierName={s.member.name || s.email}
       role={s.role}
       registerId={register?.id ?? null}
@@ -98,5 +102,6 @@ export default async function TillPage() {
       offers={offerDefs}
       expenseAccounts={expenseAccounts}
     />
+    </>
   );
 }

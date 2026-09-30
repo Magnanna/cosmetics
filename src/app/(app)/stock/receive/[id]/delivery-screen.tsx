@@ -121,7 +121,7 @@ export function DeliveryScreen({
               else if (matches.length === 1) addPicked(matches[0]);
             }}
             placeholder={scanning ? "Looking up…" : "Scan a barcode — or type a product name"}
-            className="h-12 flex-1 rounded-xl bg-white px-4 text-[15px] border-[0.5px] border-ink-200 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-tint"
+            className="h-12 flex-1 rounded-xl bg-white px-4 text-[15px] border border-ink-200 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-tint"
           />
           <Button variant="secondary" size="lg" onClick={() => setNewItem({ barcode: null, suggestion: null })}>No barcode</Button>
         </div>
@@ -156,9 +156,9 @@ export function DeliveryScreen({
                     <div className="flex items-center gap-3">
                       {l.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={l.imageUrl} alt="" className="w-10 h-10 rounded-md object-cover bg-ink-50" />
+                        <img src={l.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover bg-ink-50" />
                       ) : (
-                        <button onClick={() => setPhotoFor(l)} className="w-10 h-10 rounded-md bg-ink-50 border-[0.5px] border-dashed border-ink-200 text-[10px] text-ink-400 leading-tight cursor-pointer hover:border-brand">Add photo</button>
+                        <button onClick={() => setPhotoFor(l)} className="w-10 h-10 rounded-lg bg-ink-50 border border-dashed border-ink-200 text-[10px] text-ink-400 leading-tight cursor-pointer hover:border-brand">Add photo</button>
                       )}
                       <div>
                         <div className="font-medium">{l.name}</div>
@@ -179,7 +179,7 @@ export function DeliveryScreen({
                         if (!Number.isInteger(n) || n < 0) { e.target.value = String(l.qty); return; }
                         patchLine(l.variantId, { qty: n });
                       }}
-                      className="h-9 w-full rounded-md bg-white px-2 text-right tnum border-[0.5px] border-ink-200 focus:border-brand focus:outline-none"
+                      className="h-9 w-full rounded-lg bg-white px-2 text-right tnum border border-ink-200 focus:border-brand focus:outline-none"
                     />
                   </td>
                   <td className="px-3 py-2.5">
@@ -197,7 +197,7 @@ export function DeliveryScreen({
                         if (c !== null && (Number.isNaN(c) || c < 0)) { setFlash({ text: "That cost isn't a valid amount.", bad: true }); return; }
                         patchLine(l.variantId, { unitRateCents: c });
                       }}
-                      className={`h-9 w-full rounded-md bg-white px-2 text-right tnum border-[0.5px] focus:border-brand focus:outline-none ${l.unitRateCents === null ? "border-warn" : "border-ink-200"}`}
+                      className={`h-9 w-full rounded-lg bg-white px-2 text-right tnum border focus:border-brand focus:outline-none ${l.unitRateCents === null ? "border-warn" : "border-ink-200"}`}
                     />
                   </td>
                   <td className="px-3 py-2.5 text-right tnum">{l.unitRateCents === null ? "—" : kes(l.unitRateCents * l.qty)}</td>
@@ -358,7 +358,7 @@ function NewItemPanel({
             <div className="flex justify-between text-[13.5px]"><span>New shade/size of <b>{attach.name}</b></span><button className="text-ink-600 cursor-pointer" onClick={() => setAttach(null)}>Undo</button></div>
             <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
               <Field label="Shade or size"><Input id="n-opt" value={optionValue} onChange={(e) => setOptionValue(e.target.value)} placeholder="e.g. Honey" autoFocus /></Field>
-              <input type="color" aria-label="Swatch colour" value={swatch || "#e9d6c6"} onChange={(e) => setSwatch(e.target.value)} className="h-9 w-10 rounded-md border-[0.5px] border-ink-200 bg-white cursor-pointer" />
+              <input type="color" aria-label="Swatch colour" value={swatch || "#e9d6c6"} onChange={(e) => setSwatch(e.target.value)} className="h-9 w-10 rounded-lg border border-ink-200 bg-white cursor-pointer" />
             </div>
           </div>
         ) : (

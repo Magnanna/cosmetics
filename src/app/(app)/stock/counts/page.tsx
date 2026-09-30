@@ -70,7 +70,7 @@ export default async function CountsPage() {
         </div>
         {inProgress ? (
           <div className="card p-5 grid gap-2">
-            <h2 className="text-[15px] font-semibold">Count in progress</h2>
+            <h2 className="text-[13.5px] font-semibold">Count in progress</h2>
             <p className="text-[13.5px] text-ink-600">{inProgress.t.scopeLabel} · {inProgress.counted} of {inProgress.total} counted.</p>
             <Link href={`/stock/counts/${inProgress.t.id}`} className="text-brand-700 underline text-[13.5px]">{inProgress.t.status === "submitted" && can(s.role, "stock.approve") ? "Review and approve" : "Continue"}</Link>
           </div>

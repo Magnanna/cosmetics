@@ -67,7 +67,7 @@ export default async function BillsPage() {
           </div>
           <div className="grid gap-4">
             <div className="card p-5 grid gap-2">
-              <h2 className="text-[15px] font-semibold">You owe</h2>
+              <h2 className="text-[13.5px] font-semibold">You owe</h2>
               {owed.length === 0 ? <p className="text-[13.5px] text-ink-400">All suppliers are paid.</p> : owed.map((o) => (
                 <div key={o.id} className="flex justify-between text-[13.5px]"><span>{o.name}</span><Money cents={Number(o.owed)} /></div>
               ))}

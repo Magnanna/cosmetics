@@ -3,7 +3,7 @@ import { db, customers, members, orgs, salePayments, saleLines, sales } from "@/
 import { maskPhone } from "./phone";
 
 export interface ReceiptData {
-  shop: { name: string; address: string | null; phone: string | null; kraPin: string | null; footer: string | null };
+  shop: { name: string; address: string | null; phone: string | null; kraPin: string | null; footer: string | null; logoUrl: string | null; brandColor: string; logoPrint: string | null };
   receiptNo: string;
   token: string;
   createdAt: string; // ISO
@@ -35,7 +35,7 @@ export async function getReceiptByToken(token: string): Promise<ReceiptData | nu
   ]);
   const earns = row.customer.earnsPointsOverride ?? row.customer.type === "retail";
   return {
-    shop: { name: row.org.name, address: row.org.address, phone: row.org.phone, kraPin: row.org.kraPin, footer: row.org.receiptFooter },
+    shop: { name: row.org.name, address: row.org.address, phone: row.org.phone, kraPin: row.org.kraPin, footer: row.org.receiptFooter, logoUrl: row.org.logoUrl, brandColor: row.org.brandColor, logoPrint: row.org.logoPrint },
     receiptNo: row.sale.receiptNo,
     token,
     createdAt: row.sale.createdAt.toISOString(),

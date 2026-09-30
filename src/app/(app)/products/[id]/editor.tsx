@@ -125,7 +125,7 @@ function VariantCard({ v, productId, option1Name, option2Name, isOwner }: { v: E
     <Card className={`p-5 grid gap-4 ${v.archived ? "opacity-60" : ""}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          {option1Name && <span className="w-8 h-8 rounded-md border-[0.5px] border-ink-200" style={{ background: swatch || "var(--color-ink-50)" }} />}
+          {option1Name && <span className="w-8 h-8 rounded-lg border border-ink-200" style={{ background: swatch || "var(--color-ink-50)" }} />}
           <span className="font-semibold text-[14.5px]">{[v.option1Value, v.option2Value].filter(Boolean).join(" · ") || "Standard"}</span>
           {v.archived && <Pill>Archived</Pill>}
           {v.pending.length > 0 && <Pill tone="warn">Price change waiting for the owner</Pill>}
@@ -137,7 +137,7 @@ function VariantCard({ v, productId, option1Name, option2Name, isOwner }: { v: E
         {option2Name && <Field label={option2Name}><Input id={`o2-${v.id}`} value={o2} onChange={(e) => setO2(e.target.value)} /></Field>}
         {option1Name && (
           <Field label="Swatch">
-            <input type="color" aria-label="Swatch colour" value={swatch || "#e9d6c6"} onChange={(e) => setSwatch(e.target.value)} className="h-9 w-12 rounded-md border-[0.5px] border-ink-200 bg-white cursor-pointer" />
+            <input type="color" aria-label="Swatch colour" value={swatch || "#e9d6c6"} onChange={(e) => setSwatch(e.target.value)} className="h-9 w-12 rounded-lg border border-ink-200 bg-white cursor-pointer" />
           </Field>
         )}
         <Field label="Retail (KES)"><Input id={`r-${v.id}`} inputMode="decimal" value={retail} onChange={(e) => setRetail(e.target.value)} /></Field>
@@ -151,7 +151,7 @@ function VariantCard({ v, productId, option1Name, option2Name, isOwner }: { v: E
         <span className="text-[12.5px] font-medium text-ink-600">Barcodes</span>
         <div className="flex flex-wrap gap-2">
           {v.barcodes.map((b) => (
-            <span key={b.id} className="inline-flex items-center gap-2 rounded-full bg-ink-50 border-[0.5px] border-ink-200 px-3 py-1 text-[12.5px] tnum">
+            <span key={b.id} className="inline-flex items-center gap-2 rounded-full bg-ink-50 border border-ink-200 px-3 py-1 text-[12.5px] tnum">
               {b.code}{b.source === "generated" && <span className="text-ink-400">shop label</span>}
               <button aria-label={`Remove barcode ${b.code}`} onClick={() => barcode(() => barcodeRemove(productId, b.id))} className="text-ink-400 hover:text-bad cursor-pointer">✕</button>
             </span>

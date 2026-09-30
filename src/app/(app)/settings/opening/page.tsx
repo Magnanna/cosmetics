@@ -19,7 +19,7 @@ export default async function OpeningPage() {
       <PageHeader title="Opening balances" subtitle="What the shop had and owed on the day it started using Kenfri POS. Opening stock is entered with each product (units and cost)." />
       <div className="grid gap-5 lg:grid-cols-[1fr_380px] items-start">
         <div className="card p-5 grid gap-2">
-          <h2 className="text-[15px] font-semibold">Entered so far</h2>
+          <h2 className="text-[13.5px] font-semibold">Entered so far</h2>
           {done.length === 0 ? <p className="text-[13px] text-ink-400">Nothing yet. Start with cash at hand, the M-Pesa till balance and the bank balance.</p> : done.map((j) => (
             <div key={j.id} className="text-[13.5px]"><span className="tnum text-ink-400">{j.date}</span> {j.memo}</div>
           ))}
