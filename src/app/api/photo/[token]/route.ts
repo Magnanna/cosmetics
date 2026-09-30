@@ -3,6 +3,10 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db, barcodeLibrary, photoTokens, products, variantBarcodes, variants } from "@/db";
 import { ImageError, saveProductImage } from "@/lib/images";
 import { openPhotoToken } from "@/lib/photo-tokens";
+import { magnificEnabled } from "@/lib/magnific";
+import { makeStudioPhoto } from "@/lib/studio-db";
+
+export const maxDuration = 60;
 
 /** Phone upload for a product photo. The single-use token in the URL is the credential. */
 export async function POST(req: Request, { params }: { params: Promise<{ token: string }> }) {
@@ -24,7 +28,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
 
   try {
     const url = await saveProductImage(row.t.orgId, row.t.productId, new Uint8Array(await file.arrayBuffer()), file.type || "image/jpeg");
-    await db.update(products).set({ imageUrl: url, updatedAt: new Date() }).where(and(eq(products.orgId, row.t.orgId), eq(products.id, row.t.productId)));
+    await db.update(products).set({ imageUrl: url, imageOriginalUrl: null, imageCutoutUrl: null, updatedAt: new Date() }).where(and(eq(products.orgId, row.t.orgId), eq(products.id, row.t.productId)));
     // Share the photo with the barcode library for this product's manufacturer barcodes.
     const codes = await db
       .select({ code: variantBarcodes.code })
@@ -32,7 +36,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
       .innerJoin(variants, eq(variants.id, variantBarcodes.variantId))
       .where(and(eq(variants.productId, row.t.productId), eq(variantBarcodes.source, "manufacturer")));
     for (const { code } of codes) await db.update(barcodeLibrary).set({ imageUrl: url }).where(and(eq(barcodeLibrary.code, code), isNull(barcodeLibrary.imageUrl)));
-    return NextResponse.json({ ok: true });
+    // Studio photo when Magnific is set up; the plain photo stays if that fails.
+    let studio = false;
+    if (magnificEnabled()) {
+      try {
+        await makeStudioPhoto(row.t.orgId, row.t.productId);
+        studio = true;
+      } catch (e) {
+        console.error("studio photo", e);
+      }
+    }
+    return NextResponse.json({ ok: true, studio });
   } catch (e) {
     // Give the link back so they can retry.
     await db.update(photoTokens).set({ usedAt: null }).where(eq(photoTokens.token, token));

@@ -12,6 +12,7 @@ import { fmtPoints } from "@/lib/loyalty";
 import { choosePrinter, inDesktopApp, listPrinters, openDrawer, printReceipt, printTestPage } from "@/lib/print-client";
 import { parseKES } from "@/lib/money";
 import { normalizeKenyanPhone } from "@/lib/phone";
+import { parseCardNumber } from "@/lib/card";
 import { ShopMark } from "@/components/sidebar";
 import type { Role } from "@/lib/context";
 import type { UsualItem } from "@/lib/usual";
@@ -142,8 +143,19 @@ export function TillApp(props: {
     [priceOf]
   );
 
+  // A scanned loyalty card picks the customer instead of adding a product.
+  const pickCardCustomer = useCallback((code: string) => {
+    if (!parseCardNumber(code)) return false;
+    lookupCustomer(code).then((r) => {
+      if (r.ok && r.data) { setCustomer(r.data); setToast(`${r.data.businessName || r.data.name || "Customer"} — card scanned.`); }
+      else setToast("That loyalty card isn't from this shop.");
+    });
+    return true;
+  }, []);
+
   const addByBarcode = useCallback(
     (code: string) => {
+      if (pickCardCustomer(code)) return true;
       const hit = variantIndex.byCode.get(code.trim());
       if (!hit) {
         setToast(`Barcode ${code} not found — search by name or tell a staff member.`);
@@ -152,7 +164,7 @@ export function TillApp(props: {
       addVariant(hit.product, hit.variant);
       return true;
     },
-    [variantIndex, addVariant]
+    [variantIndex, addVariant, pickCardCustomer]
   );
 
   // Barcode scanners type fast and end with Enter. Catch scans anywhere on the till except text fields other than search.
@@ -301,6 +313,7 @@ export function TillApp(props: {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && query.trim()) {
+                if (pickCardCustomer(query.trim())) { setQuery(""); return; }
                 const exact = variantIndex.byCode.get(query.trim());
                 if (exact) { addVariant(exact.product, exact.variant); setQuery(""); }
                 else if (visible.length === 1 && visible[0].variants.length === 1) { addVariant(visible[0], visible[0].variants[0]); setQuery(""); }
@@ -672,11 +685,12 @@ function CustomerSlot({ customer, onChange, phoneRef }: { customer: TillCustomer
 
   const lookup = () => {
     setError(null);
-    if (!normalizeKenyanPhone(phone)) return setError("Enter a Kenyan mobile, e.g. 0712 345 678.");
+    if (!normalizeKenyanPhone(phone) && !parseCardNumber(phone)) return setError("Enter a Kenyan mobile (e.g. 0712 345 678) or scan their loyalty card.");
     start(async () => {
       const r = await lookupCustomer(phone);
       if (!r.ok) return setError(r.error);
       if (r.data) { onChange(r.data); setPhone(""); }
+      else if (parseCardNumber(phone)) setError("No customer has that card number.");
       else setCreating(true);
     });
   };

@@ -5,6 +5,10 @@ import { can } from "@/lib/permissions";
 import { EmptyState, Money, PageHeader, Pill } from "@/components/ui";
 import { OfferForm } from "./offer-form";
 import { PauseButton } from "./pause-button";
+import { PosterMaker } from "./poster-maker";
+import { magnificEnabled } from "@/lib/magnific";
+
+export const maxDuration = 60;
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +71,7 @@ export default async function OffersPage() {
                   <div className="flex items-center gap-3">
                     <Pill tone={status.tone}>{status.label}</Pill>
                     {can(s.role, "catalog.set_prices") && now < o.endsAt && <PauseButton offerId={o.id} active={o.active} />}
+                    {can(s.role, "catalog.edit") && now < o.endsAt && <PosterMaker offerId={o.id} offerTitle={o.title} magnific={magnificEnabled()} />}
                   </div>
                 </div>
                 <div className="text-[12.5px] text-ink-600">

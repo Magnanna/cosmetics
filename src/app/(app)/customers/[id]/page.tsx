@@ -10,6 +10,8 @@ import { formatPhone } from "@/lib/phone";
 import { nairobiDate } from "@/lib/time";
 import { Card, Money, PageHeader, Pill } from "@/components/ui";
 import { CreditForm, PaymentForm } from "./forms";
+import { cardNumber, formatCardNumber } from "@/lib/card";
+import { ensureCardToken } from "@/lib/loyalty-card";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +42,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
     inOrg(s, () => agingBuckets(db, c.id, today)),
   ]);
   const owed = statement.closingCents;
+  const cardToken = earns ? await ensureCardToken(c.id) : null;
 
   return (
     <>
@@ -49,7 +52,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
         actions={<Link href="/customers" className="text-[13px] text-ink-600 underline">All customers</Link>}
       />
       <div className="grid gap-4 sm:grid-cols-3 mb-5">
-        <Card className="p-5 grid gap-1"><span className="text-[12.5px] text-ink-400">Loyalty points</span><span className="money-lg">{earns ? fmtPoints(c.pointsBalance) : "Not on points"}</span></Card>
+        <Card className="p-5 grid gap-1"><span className="text-[12.5px] text-ink-400">Loyalty points</span><span className="money-lg">{earns ? fmtPoints(c.pointsBalance) : "Not on points"}</span>{cardToken && <span className="text-[12px] text-ink-400 tnum">Card {formatCardNumber(cardNumber(s.org.id, c.id))} · <a href={`/c/${cardToken}`} target="_blank" rel="noreferrer" className="text-brand-700 font-medium hover:underline">Open card page</a></span>}</Card>
         <Card className="p-5 grid gap-1"><span className="text-[12.5px] text-ink-400">Owes (KES)</span><Money cents={owed} className={`money-lg ${owed > 0 ? "text-bad" : ""}`} /></Card>
         <Card className="p-5 grid gap-1"><span className="text-[12.5px] text-ink-400">Credit</span><span className="money-lg">{c.creditEnabled ? <>KES <Money cents={c.creditLimitCents} /></> : "No credit"}</span>{c.creditEnabled && <span className="text-[12px] text-ink-400">{c.creditTermsDays} days to pay</span>}</Card>
       </div>

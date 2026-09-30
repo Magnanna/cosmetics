@@ -5,6 +5,9 @@ import { db, brands, categories, priceChangeRequests, products, stockLots, varia
 import { requirePage } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { PageHeader } from "@/components/ui";
+import { magnificEnabled } from "@/lib/magnific";
+
+export const maxDuration = 60;
 import { ProductEditor, type EditableVariant } from "./editor";
 
 export const dynamic = "force-dynamic";
@@ -48,7 +51,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     <>
       <PageHeader title={p.p.name} subtitle={`${p.brand ?? "No brand"}${p.p.archived ? " · archived" : ""}`} actions={<Link href="/products" className="text-[13px] text-ink-600 underline">All products</Link>} />
       <ProductEditor
-        product={{ id: p.p.id, name: p.p.name, brandName: p.brand, categoryId: p.p.categoryId, option1Name: p.p.option1Name, option2Name: p.p.option2Name, archived: p.p.archived, imageUrl: p.p.imageUrl }}
+        product={{ id: p.p.id, name: p.p.name, brandName: p.brand, categoryId: p.p.categoryId, option1Name: p.p.option1Name, option2Name: p.p.option2Name, archived: p.p.archived, imageUrl: p.p.imageUrl, isStudio: !!p.p.imageOriginalUrl }}
+        studioEnabled={magnificEnabled()}
         variants={editable}
         categories={categoryOptions}
         isOwner={s.role === "owner"}

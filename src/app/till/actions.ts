@@ -17,6 +17,7 @@ import { processReturn, refundExchangeCredit, ReturnError } from "@/lib/returns"
 import { openShift, openShiftFor, ShiftError } from "@/lib/shifts";
 import { sendSaleReceiptSms } from "@/lib/sms";
 import { nairobiDate } from "@/lib/time";
+import { parseCardNumber } from "@/lib/card";
 import { rankUsual, type UsualItem } from "@/lib/usual";
 
 export interface TillCustomer {
@@ -83,7 +84,14 @@ async function currentShiftId(registerId: number): Promise<number> {
 
 export async function lookupCustomer(phone: string): Promise<Result<TillCustomer | null>> {
   return guard(() =>
-    withSession("customers.view", async () => {
+    withSession("customers.view", async (s) => {
+      // A scanned or typed loyalty card number works as well as a phone number.
+      const card = parseCardNumber(phone);
+      if (card) {
+        if (card.orgId !== s.org.id) return null;
+        const [row] = await db.select().from(customers).where(and(eq(customers.orgId, s.org.id), eq(customers.id, card.customerId))).limit(1);
+        return row ? toTillCustomer(row) : null;
+      }
       const c = await findCustomerByPhone(db, phone);
       return c ? toTillCustomer(c) : null;
     })

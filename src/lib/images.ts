@@ -81,3 +81,13 @@ export async function saveOrgLogo(orgId: number, bytes: Uint8Array, contentType:
   if (error) throw new ImageError(`Couldn't save the logo: ${error.message}`);
   return { url: s.getPublicUrl(path).data.publicUrl, print: toBase64(raster) };
 }
+
+/** Saves bytes we produced ourselves (studio photos, cut-outs, poster backdrops). */
+export async function saveGeneratedImage(orgId: number, name: string, bytes: Buffer, contentType: "image/png" | "image/webp" | "image/jpeg"): Promise<string> {
+  const ext = contentType.split("/")[1];
+  const path = `${orgId}/${name}-${randomBytes(6).toString("hex")}.${ext === "jpeg" ? "jpg" : ext}`;
+  const s = storage();
+  const { error } = await s.upload(path, bytes, { contentType, upsert: false, cacheControl: "31536000" });
+  if (error) throw new ImageError(`Couldn't save the image: ${error.message}`);
+  return s.getPublicUrl(path).data.publicUrl;
+}

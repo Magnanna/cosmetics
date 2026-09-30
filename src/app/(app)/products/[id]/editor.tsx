@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { barcodeAdd, barcodeRemove, newVariant, saveProduct, saveVariant } from "../edit-actions";
+import { barcodeAdd, barcodeRemove, newVariant, saveProduct, saveVariant, studioPhoto, undoStudio } from "../edit-actions";
 import { parseKES } from "@/lib/money";
 import { Button, Card, Field, Input, Pill, Select } from "@/components/ui";
 
@@ -27,9 +27,10 @@ function Msg({ m }: { m: { ok: boolean; text: string } | null }) {
   return m ? <p className={`text-[13px] ${m.ok ? "text-good" : "text-bad"}`}>{m.text}</p> : null;
 }
 
-export function ProductEditor({ product, variants, categories, isOwner }: {
-  product: { id: number; name: string; brandName: string | null; categoryId: number | null; option1Name: string | null; option2Name: string | null; archived: boolean; imageUrl: string | null };
+export function ProductEditor({ product, variants, categories, isOwner, studioEnabled = false }: {
+  product: { id: number; name: string; brandName: string | null; categoryId: number | null; option1Name: string | null; option2Name: string | null; archived: boolean; imageUrl: string | null; isStudio: boolean };
   variants: EditableVariant[];
+  studioEnabled?: boolean;
   categories: { id: number; label: string }[];
   isOwner: boolean;
 }) {
@@ -53,12 +54,7 @@ export function ProductEditor({ product, variants, categories, isOwner }: {
   return (
     <div className="grid gap-5">
       <Card className="p-5 grid gap-4 md:grid-cols-[auto_1fr]">
-        {product.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={product.imageUrl} alt="" className="w-28 h-28 rounded-lg object-contain bg-ink-50" />
-        ) : (
-          <div className="w-28 h-28 rounded-lg bg-ink-50 grid place-items-center text-[12px] text-ink-400 text-center px-2">No photo — add one when receiving stock</div>
-        )}
+        <StudioPhoto productId={product.id} imageUrl={product.imageUrl} isStudio={product.isStudio} enabled={studioEnabled} />
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2"><Field label="Product name"><Input id="p-name" value={name} onChange={(e) => setName(e.target.value)} /></Field></div>
           <Field label="Brand"><Input id="p-brand" value={brand} onChange={(e) => setBrand(e.target.value)} /></Field>
@@ -208,5 +204,43 @@ function AddVariant({ productId, option1Name, option2Name }: { productId: number
         <Msg m={msg} />
       </div>
     </Card>
+  );
+}
+
+/** Product photo with the Magnific studio treatment (cut-out on the brand backdrop), and undo. */
+function StudioPhoto({ productId, imageUrl, isStudio, enabled }: { productId: number; imageUrl: string | null; isStudio: boolean; enabled: boolean }) {
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+  const act = (fn: () => Promise<{ ok: true; message: string } | { ok: false; error: string }>) =>
+    start(async () => {
+      setMsg(null);
+      const r = await fn();
+      setMsg(r.ok ? r.message : r.error);
+    });
+  return (
+    <div className="grid gap-2 justify-items-center content-start w-32">
+      <div className="relative w-32 h-32 rounded-xl overflow-hidden bg-ink-50 border border-ink-100">
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imageUrl} alt="" className={`w-full h-full object-contain transition-opacity ${pending ? "opacity-40" : ""}`} />
+        ) : (
+          <div className="w-full h-full grid place-items-center text-[11.5px] text-ink-400 text-center px-2">No photo yet — add one when receiving stock</div>
+        )}
+        {pending && <div className="absolute inset-0 grid place-items-center text-[11px] font-medium text-brand-700">Working…</div>}
+        {isStudio && !pending && <span className="absolute left-1.5 top-1.5 inline-flex px-1.5 py-0.5 rounded-full text-[10px] font-medium border bg-white/90 text-brand-700 border-brand-tint">Studio</span>}
+      </div>
+      {imageUrl && enabled && (
+        isStudio ? (
+          <div className="flex gap-2 text-[11.5px]">
+            <button type="button" disabled={pending} onClick={() => act(() => studioPhoto(productId))} className="font-medium text-brand-700 hover:underline cursor-pointer">Redo</button>
+            <button type="button" disabled={pending} onClick={() => act(() => undoStudio(productId))} className="text-ink-400 hover:text-ink-900 cursor-pointer">Use original</button>
+          </div>
+        ) : (
+          <button type="button" disabled={pending} onClick={() => act(() => studioPhoto(productId))} className="h-8 px-3 rounded-full bg-brand text-brand-ink text-[12px] font-medium shadow-[0_1px_2px_rgba(0,0,0,0.12)] hover:bg-brand-600 transition-colors cursor-pointer disabled:opacity-50">Make studio photo</button>
+        )
+      )}
+      {imageUrl && !enabled && <span className="text-[10.5px] text-ink-400 text-center">Studio photos need the Magnific key</span>}
+      {msg && <span className="text-[11px] text-ink-600 text-center">{msg}</span>}
+    </div>
   );
 }

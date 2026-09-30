@@ -102,7 +102,7 @@ html {
   to { opacity: 1; transform: translateY(0); }
 }
 /* Pages settle in the way Zeno's admin screens do. */
-.page-enter { animation: zeno-rise 0.28s cubic-bezier(0.23, 1, 0.32, 1) both; }
+.page-enter { animation: zeno-rise 0.28s cubic-bezier(0.23, 1, 0.32, 1) backwards; } /* no fill afterwards: a lingering transform would trap fixed pop-ups */
 @media (prefers-reduced-motion: reduce) { .page-enter { animation: none; } }
 
 :focus-visible { outline: 2px solid var(--color-brand-ring); outline-offset: 2px; }

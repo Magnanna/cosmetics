@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
 import { audit, ForbiddenError, withSession } from "@/lib/auth";
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
+import { products } from "@/db";
+import { ImageError } from "@/lib/images";
+import { MagnificError } from "@/lib/magnific";
+import { makeStudioPhoto, StudioError, undoStudioPhoto } from "@/lib/studio-db";
 import { addBarcode, addVariant, CatalogError, changePrices, decidePriceRequest, removeBarcode, updateProduct, updateVariant } from "@/lib/catalog";
 
 type R = { ok: true; message: string } | { ok: false; error: string };
@@ -16,7 +21,7 @@ async function run(fn: () => Promise<string>, productId?: number): Promise<R> {
     revalidatePath("/till");
     return { ok: true, message };
   } catch (e) {
-    if (e instanceof CatalogError || e instanceof ForbiddenError) return { ok: false, error: e.message };
+    if (e instanceof CatalogError || e instanceof ForbiddenError || e instanceof StudioError || e instanceof MagnificError || e instanceof ImageError) return { ok: false, error: e.message };
     throw e;
   }
 }
@@ -110,4 +115,30 @@ export async function decidePrice(requestId: number, approve: boolean): Promise<
     ));
   revalidatePath("/products/prices");
   return res;
+}
+
+/** Studio photo for one product (Magnific cut-out on the brand backdrop). */
+export async function studioPhoto(productId: number): Promise<R> {
+  return run(() =>
+    withSession("catalog.edit", async (s) => {
+      await makeStudioPhoto(s.org.id, productId);
+      await audit(db, { action: "product.studio_photo", entity: "product", entityId: productId });
+      return "Studio photo ready.";
+    }), productId);
+}
+
+export async function undoStudio(productId: number): Promise<R> {
+  return run(() =>
+    withSession("catalog.edit", async (s) => {
+      await undoStudioPhoto(s.org.id, productId);
+      return "Back to the original photo.";
+    }), productId);
+}
+
+/** Products with a photo that isn't a studio photo yet (for "Make all studio photos"). */
+export async function studioPending(): Promise<number[]> {
+  return withSession("catalog.edit", async (s) => {
+    const rows = await db.select({ id: products.id }).from(products).where(and(eq(products.orgId, s.org.id), eq(products.archived, false), isNotNull(products.imageUrl), isNull(products.imageOriginalUrl)));
+    return rows.map((r) => r.id);
+  });
 }

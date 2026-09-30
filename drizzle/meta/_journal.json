@@ -85,6 +85,13 @@
       "when": 1790756827897,
       "tag": "0011_org_logo_print",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790809995517,
+      "tag": "0012_cards_studio_posters",
+      "breakpoints": true
     }
   ]
 }

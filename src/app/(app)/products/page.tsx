@@ -4,6 +4,10 @@ import { db, brands, categories, products, variants } from "@/db";
 import { requirePage, inOrg } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { Button, EmptyState, Money, PageHeader, Pill } from "@/components/ui";
+import { magnificEnabled } from "@/lib/magnific";
+import { StudioAll } from "./studio-all";
+
+export const maxDuration = 60;
 
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<{ archived?: string }> }) {
   const s = await requirePage("catalog.view");
@@ -37,7 +41,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       <PageHeader
         title="Catalogue"
         subtitle={<>{rows.length} {archived ? "archived " : ""}product{rows.length === 1 ? "" : "s"} · <Link href={archived ? "/products" : "/products?archived=1"} className="underline">{archived ? "Show current" : "Show archived"}</Link></>}
-        actions={canEdit ? <Link href="/products/new"><Button>New product</Button></Link> : undefined}
+        actions={canEdit ? <>{magnificEnabled() && <StudioAll />}<Link href="/products/new"><Button>New product</Button></Link></> : undefined}
       />
       {rows.length === 0 ? (
         <EmptyState

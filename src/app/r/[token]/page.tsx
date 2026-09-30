@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getReceiptByToken } from "@/lib/receipt";
 import { brandPalette } from "@/lib/brand";
+import { cardTokenForReceipt } from "@/lib/loyalty-card";
 import { AutoPrint } from "./auto-print";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +13,7 @@ export default async function ReceiptPage({ params, searchParams }: { params: Pr
   const [{ token }, { print }] = await Promise.all([params, searchParams]);
   const r = await getReceiptByToken(token);
   if (!r) notFound();
+  const cardToken = r.customer.pointsBalance !== null ? await cardTokenForReceipt(token) : null;
   const when = new Date(r.createdAt).toLocaleString("en-KE", { timeZone: "Africa/Nairobi", dateStyle: "medium", timeStyle: "short" });
   return (
     <main className="receipt mx-auto my-6 w-[80mm] max-w-full bg-white px-4 py-5 text-[12.5px] leading-snug text-black print:my-0 print:px-1 print:shadow-none shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
@@ -60,6 +62,11 @@ export default async function ReceiptPage({ params, searchParams }: { params: Pr
         <div className="flex justify-between tnum"><span>Points balance</span><span>{(r.customer.pointsBalance / 100).toFixed(2)}</span></div>
       )}
       {r.shop.footer && <p className="mt-3 text-center">{r.shop.footer}</p>}
+      {cardToken && (
+        <a href={`/c/${cardToken}`} className="print:hidden mt-4 block rounded-lg px-3 py-2.5 text-center text-[13px] font-semibold" style={{ background: brandPalette(r.shop.brandColor).brand, color: brandPalette(r.shop.brandColor).brandInk }}>
+          View your loyalty card & points
+        </a>
+      )}
     </main>
   );
 }

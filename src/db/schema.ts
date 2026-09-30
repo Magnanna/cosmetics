@@ -177,6 +177,10 @@ export const products = pgTable("products", {
   categoryId: integer("category_id").references(() => categories.id),
   description: text("description"),
   imageUrl: text("image_url"),
+  /** The photo as taken, kept so a studio photo can be undone. */
+  imageOriginalUrl: text("image_original_url"),
+  /** Background-free PNG (from Magnific) used for studio photos and posters. */
+  imageCutoutUrl: text("image_cutout_url"),
   /** Up to two option types, e.g. "Shade", "Size". Null = single default variant. */
   option1Name: text("option1_name"),
   option2Name: text("option2_name"),
@@ -315,8 +319,10 @@ export const customers = pgTable("customers", {
   creditLimitCents: money("credit_limit_cents").notNull().default(0),
   creditTermsDays: integer("credit_terms_days").notNull().default(30),
   notes: text("notes"),
+  /** Secret for the customer's public loyalty card page (/c/<token>); made on first use. */
+  cardToken: text("card_token"),
   createdAt: createdAt(),
-}, (t) => [uniqueIndex("uq_customers_org_phone").on(t.orgId, t.phone)]);
+}, (t) => [uniqueIndex("uq_customers_org_phone").on(t.orgId, t.phone), uniqueIndex("uq_customers_card_token").on(t.cardToken)]);
 
 /* ---------------- Counters ---------------- */
 
@@ -663,6 +669,8 @@ export const offers = pgTable("offers", {
   endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
   active: boolean("active").notNull().default(true),
   createdBy: integer("created_by"),
+  /** Poster backdrops made for this offer (stored URLs), reused until the owner asks for new ones. */
+  posterBackdrops: jsonb("poster_backdrops").$type<{ square?: string; story?: string }>(),
   createdAt: createdAt(),
 }, (t) => [index("idx_offers_org_window").on(t.orgId, t.startsAt, t.endsAt)]);
 
