@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { completeSale, lookupCustomer, parkSale, parkedList, quickCreateCustomer, startShift, type ParkedCart, type TillCustomer } from "./actions";
+import { completeSale, customerUsual, lookupCustomer, parkSale, parkedList, quickCreateCustomer, startShift, type ParkedCart, type TillCustomer } from "./actions";
 import { MoreMenu, ParkedSales, PinPrompt, SwitchUser, type ExchangeCredit } from "./till-dialogs";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
@@ -14,6 +14,7 @@ import { parseKES } from "@/lib/money";
 import { normalizeKenyanPhone } from "@/lib/phone";
 import { ShopMark } from "@/components/sidebar";
 import type { Role } from "@/lib/context";
+import type { UsualItem } from "@/lib/usual";
 
 export interface TillVariant {
   id: number;
@@ -126,15 +127,15 @@ export function TillApp(props: {
   const priceOf = useCallback((v: TillVariant) => (wholesale && v.wholesaleCents > 0 ? v.wholesaleCents : v.retailCents), [wholesale]);
 
   const addVariant = useCallback(
-    (p: TillProduct, v: TillVariant) => {
+    (p: TillProduct, v: TillVariant, qty = 1) => {
       if (priceOf(v) <= 0) {
         setToast(`${p.name}${v.label ? ` · ${v.label}` : ""} has no approved price yet.`);
         return;
       }
       setCart((c) => {
         const i = c.findIndex((l) => l.variantId === v.id);
-        if (i >= 0) return c.map((l, j) => (j === i ? { ...l, qty: l.qty + 1 } : l));
-        return [...c, { variantId: v.id, productName: p.name, label: v.label, qty: 1, discountCents: 0 }];
+        if (i >= 0) return c.map((l, j) => (j === i ? { ...l, qty: l.qty + qty } : l));
+        return [...c, { variantId: v.id, productName: p.name, label: v.label, qty, discountCents: 0 }];
       });
       if (v.onHand <= 0) setToast(`Heads up: the system shows no ${p.name} in stock. Sale allowed — check the shelf count.`);
     },
@@ -360,6 +361,15 @@ export function TillApp(props: {
             <span className="text-[11.5px] text-ink-400 tnum">{units} item{units === 1 ? "" : "s"}</span>
           </div>
           <CustomerSlot customer={customer} onChange={(c) => { setCustomer(c); if (!c || c.id !== exchange?.customerId) setExchange(null); }} phoneRef={phoneRef} />
+          {customer && (
+            <UsualStrip
+              customerId={customer.id}
+              inCart={new Set(cart.map((l) => l.variantId))}
+              resolve={(id) => variantIndex.byId.get(id)}
+              priceOf={priceOf}
+              onAdd={(p, v, qty) => addVariant(p, v, qty)}
+            />
+          )}
           {exchange && (
             <div className="mx-5 mb-2 rounded-lg bg-brand-wash border border-brand-tint px-3 py-2 text-[12.5px] flex justify-between">
               <span>Exchange credit from {exchange.returnNo}</span>
@@ -711,6 +721,59 @@ function CustomerSlot({ customer, onChange, phoneRef }: { customer: TillCustomer
         </form>
       )}
       {error && <p className="text-bad text-[12.5px]">{error}</p>}
+    </div>
+  );
+}
+
+/** "Usually buys": the customer's repeat items, one tap to add what they took last time. */
+function UsualStrip({ customerId, inCart, resolve, priceOf, onAdd }: {
+  customerId: number;
+  inCart: Set<number>;
+  resolve: (variantId: number) => { product: TillProduct; variant: TillVariant } | undefined;
+  priceOf: (v: TillVariant) => number;
+  onAdd: (p: TillProduct, v: TillVariant, qty: number) => void;
+}) {
+  const [data, setData] = useState<{ items: UsualItem[]; lastVisit: string | null } | null>(null);
+  useEffect(() => {
+    let live = true;
+    setData(null);
+    customerUsual(customerId).then((r) => live && r.ok && setData(r.data));
+    return () => { live = false; };
+  }, [customerId]);
+  const items = (data?.items ?? []).flatMap((i) => {
+    const hit = resolve(i.variantId);
+    return hit && priceOf(hit.variant) > 0 ? [{ ...i, ...hit }] : [];
+  });
+  if (!data) return null;
+  if (items.length === 0) return <p className="mx-5 mb-2 text-[11.5px] text-ink-400">First visit here, or nothing on file yet.</p>;
+  const lastVisit = data.lastVisit ? new Date(`${data.lastVisit}T00:00:00Z`).toLocaleDateString("en-KE", { day: "numeric", month: "short", timeZone: "UTC" }) : null;
+  const toAdd = items.filter((i) => !inCart.has(i.variantId));
+  return (
+    <div className="mx-5 mb-2 grid gap-1.5 animate-[zeno-pop_0.18s_ease-out]">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-ink-400">Usually buys{lastVisit ? ` · last visit ${lastVisit}` : ""}</span>
+        {toAdd.length > 1 && (
+          <button onClick={() => toAdd.forEach((i) => onAdd(i.product, i.variant, i.lastQty))} className="text-[11.5px] font-medium text-brand-700 hover:underline cursor-pointer">Add all</button>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {items.map((i) => {
+          const added = inCart.has(i.variantId);
+          return (
+            <button
+              key={i.variantId}
+              disabled={added}
+              onClick={() => onAdd(i.product, i.variant, i.lastQty)}
+              title={`Bought ${i.times} time${i.times === 1 ? "" : "s"} · last ${i.lastDate}`}
+              className={`max-w-full inline-flex items-center gap-1.5 h-8 pl-2 pr-2.5 rounded-full border text-[12px] transition-all cursor-pointer ${added ? "bg-ink-50 border-ink-100 text-ink-400 cursor-default" : "bg-white border-ink-200 text-ink-900 hover:border-brand hover:bg-brand-wash active:scale-[0.97]"}`}
+            >
+              {i.variant.swatchHex ? <span className="size-3.5 shrink-0 rounded-full border border-black/10" style={{ background: i.variant.swatchHex }} /> : <Plus aria-hidden="true" className="size-3.5 shrink-0 text-brand-700" />}
+              <span className="truncate">{i.product.name}{i.variant.label ? ` · ${i.variant.label}` : ""}</span>
+              {i.lastQty > 1 && <span className="tnum text-ink-400">×{i.lastQty}</span>}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

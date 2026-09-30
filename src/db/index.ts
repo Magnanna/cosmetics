@@ -2,15 +2,26 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 
+/**
+ * The app runs through Supabase's transaction pooler (port 6543): session mode
+ * (5432) allows only 15 clients in total, which a few serverless instances
+ * plus a dev server exhaust. Migrations and backups keep using DATABASE_URL as is.
+ */
+export function runtimeDatabaseUrl(url: string): string {
+  const u = new URL(url);
+  if (u.hostname.endsWith(".pooler.supabase.com") && u.port === "5432" && process.env.DB_SESSION_MODE !== "1") u.port = "6543";
+  return u.toString();
+}
+
 function databaseUrl(): string {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL not set — add it to .env.local");
-  return url;
+  return runtimeDatabaseUrl(url);
 }
 
 function createDb() {
   const client = postgres(databaseUrl(), {
-    max: 10,
+    max: process.env.VERCEL ? 3 : 8,
     idle_timeout: 20,
     connect_timeout: 15,
     prepare: false, // safe with Supabase poolers

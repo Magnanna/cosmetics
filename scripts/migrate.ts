@@ -3,6 +3,7 @@
    REST/anon API must see nothing: RLS on with no policies = deny all. */
 import { loadEnv } from "./env";
 loadEnv();
+process.env.DB_SESSION_MODE ??= "1"; // DDL goes through the session pooler
 
 async function main() {
   const { migrate } = await import("drizzle-orm/postgres-js/migrator");

@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, desc, eq, ilike, inArray, or } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, ne, or } from "drizzle-orm";
 import { z } from "zod";
 import { db, customers, members, orgs, parkedSales, registers, salePayments, saleLines, saleReturns, sales } from "@/db";
 import { audit, ForbiddenError, withSession } from "@/lib/auth";
@@ -17,6 +17,7 @@ import { processReturn, refundExchangeCredit, ReturnError } from "@/lib/returns"
 import { openShift, openShiftFor, ShiftError } from "@/lib/shifts";
 import { sendSaleReceiptSms } from "@/lib/sms";
 import { nairobiDate } from "@/lib/time";
+import { rankUsual, type UsualItem } from "@/lib/usual";
 
 export interface TillCustomer {
   id: number;
@@ -85,6 +86,23 @@ export async function lookupCustomer(phone: string): Promise<Result<TillCustomer
     withSession("customers.view", async () => {
       const c = await findCustomerByPhone(db, phone);
       return c ? toTillCustomer(c) : null;
+    })
+  );
+}
+
+/** What this customer usually buys (last 12 months, returned sales excluded). */
+export async function customerUsual(customerId: number): Promise<Result<{ items: UsualItem[]; lastVisit: string | null }>> {
+  return guard(() =>
+    withSession("till.sell", async (s) => {
+      const since = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10);
+      const rows = await db
+        .select({ saleId: sales.id, variantId: saleLines.variantId, qty: saleLines.qty, date: sales.businessDate })
+        .from(saleLines)
+        .innerJoin(sales, eq(sales.id, saleLines.saleId))
+        .where(and(eq(sales.orgId, s.org.id), eq(sales.customerId, customerId), gte(sales.businessDate, since), ne(sales.status, "returned")))
+        .orderBy(desc(sales.id))
+        .limit(400);
+      return rankUsual(rows);
     })
   );
 }
