@@ -28,12 +28,12 @@ export function Card({ className = "", children }: { className?: string; childre
   return <div className={`card ${className}`}>{children}</div>;
 }
 
-export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
+export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
       <div>
         <h1 className="text-[26px] font-semibold tracking-tight leading-tight">{title}</h1>
-        {subtitle && <p className="text-[13.5px] text-ink-400 mt-1">{subtitle}</p>}
+        {subtitle && <div className="text-[13.5px] text-ink-400 mt-1">{subtitle}</div>}
       </div>
       {actions && <div className="flex gap-2">{actions}</div>}
     </div>

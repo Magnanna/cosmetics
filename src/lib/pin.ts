@@ -56,3 +56,24 @@ export async function verifyOwnerPin(pin: string): Promise<number> {
   failures.set(orgId, next);
   throw new PinError(next.count >= MAX_TRIES ? "Too many wrong PINs. Owner approvals are locked for 5 minutes." : "Wrong PIN.");
 }
+
+/** Wrong-PIN counter per staff member for switching users on the till. */
+const memberFailures = new Map<number, { count: number; until: number }>();
+
+/** Checks a staff member's own PIN (till user switch). Same lockout as owner approvals. */
+export async function verifyMemberPin(memberId: number, pin: string): Promise<void> {
+  const { orgId } = ctx();
+  const f = memberFailures.get(memberId);
+  if (f && f.count >= MAX_TRIES && Date.now() < f.until) throw new PinError(`Too many wrong PINs. Try again in ${Math.ceil((f.until - Date.now()) / 60_000)} min.`);
+  if (!/^\d{4,6}$/.test(pin)) throw new PinError("Enter your 4–6 digit PIN.");
+  const [m] = await db.select({ pinHash: members.pinHash, active: members.active }).from(members).where(and(eq(members.orgId, orgId), eq(members.id, memberId))).limit(1);
+  if (!m || !m.active) throw new PinError("That person can't use the till.");
+  if (!m.pinHash) throw new PinError("No PIN set yet. Sign in on the back office once and set one under Settings → My PIN.");
+  if (await matches(pin, m.pinHash)) {
+    memberFailures.delete(memberId);
+    return;
+  }
+  const next = { count: (f && Date.now() < f.until ? f.count : 0) + 1, until: Date.now() + LOCK_MS };
+  memberFailures.set(memberId, next);
+  throw new PinError(next.count >= MAX_TRIES ? "Too many wrong PINs. Locked for 5 minutes." : "Wrong PIN.");
+}

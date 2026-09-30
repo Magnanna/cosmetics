@@ -5,8 +5,9 @@ import { requirePage, inOrg } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { Button, EmptyState, Money, PageHeader, Pill } from "@/components/ui";
 
-export default async function ProductsPage() {
+export default async function ProductsPage({ searchParams }: { searchParams: Promise<{ archived?: string }> }) {
   const s = await requirePage("catalog.view");
+  const archived = (await searchParams).archived === "1";
   const rows = await inOrg(s, () =>
     db
       .select({
@@ -24,7 +25,7 @@ export default async function ProductsPage() {
       .leftJoin(brands, eq(products.brandId, brands.id))
       .leftJoin(categories, eq(products.categoryId, categories.id))
       .leftJoin(variants, and(eq(variants.productId, products.id), eq(variants.archived, false)))
-      .where(and(eq(products.orgId, s.org.id), eq(products.archived, false)))
+      .where(and(eq(products.orgId, s.org.id), eq(products.archived, archived)))
       .groupBy(products.id, brands.name, categories.name)
       .orderBy(asc(products.name))
   );
@@ -35,7 +36,7 @@ export default async function ProductsPage() {
     <>
       <PageHeader
         title="Catalogue"
-        subtitle={`${rows.length} product${rows.length === 1 ? "" : "s"}`}
+        subtitle={<>{rows.length} {archived ? "archived " : ""}product{rows.length === 1 ? "" : "s"} · <Link href={archived ? "/products" : "/products?archived=1"} className="underline">{archived ? "Show current" : "Show archived"}</Link></>}
         actions={canEdit ? <Link href="/products/new"><Button>New product</Button></Link> : undefined}
       />
       {rows.length === 0 ? (
@@ -61,7 +62,7 @@ export default async function ProductsPage() {
               {rows.map((r) => (
                 <tr key={r.id} className="hairline-t">
                   <td className="px-4 py-3 font-medium">
-                    {r.name} {r.unpriced > 0 && <Pill tone="warn">Price pending</Pill>}
+                    {canEdit ? <Link href={`/products/${r.id}`} className="hover:underline">{r.name}</Link> : r.name} {r.unpriced > 0 && <Pill tone="warn">No price</Pill>}
                   </td>
                   <td className="px-4 py-3 text-ink-600">{r.brand ?? "—"}</td>
                   <td className="px-4 py-3 text-ink-600">{r.category ?? "—"}</td>

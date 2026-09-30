@@ -1,18 +1,24 @@
 import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { and, eq } from "drizzle-orm";
 import { db, members, orgs, auditLog, type DbOrTx } from "@/db";
 import { supabaseServer } from "./supabase/server";
 import { ctx, runWithOrg, type Role } from "./context";
 import { can, type Permission } from "./permissions";
+import { decodeTillUser, TILL_COOKIE } from "./till-cookie";
 
 export interface Session {
   userId: string;
   email: string;
+  /** The person acting: a staff member switched in by PIN on this device, or the signed-in login. */
   member: typeof members.$inferSelect;
   org: typeof orgs.$inferSelect;
   role: Role;
+  /** The member the device is signed in as (differs from `member` after a till switch). */
+  loginMember: typeof members.$inferSelect;
+  switched: boolean;
 }
 
 /** The signed-in staff member and their org, or null. Cached per request. */
@@ -27,7 +33,14 @@ export const getSession = cache(async (): Promise<Session | null> => {
     .where(and(eq(members.userId, user.id), eq(members.active, true)))
     .limit(1);
   if (!row) return null;
-  return { userId: user.id, email: user.email ?? row.member.email, member: row.member, org: row.org, role: row.member.role as Role };
+  const base = { userId: user.id, email: user.email ?? row.member.email, org: row.org, loginMember: row.member };
+  // A staff member switched in by PIN on this device acts everywhere on it — never the login's (higher) role.
+  const switchedId = decodeTillUser((await cookies()).get(TILL_COOKIE)?.value, row.org.id, user.id);
+  if (switchedId && switchedId !== row.member.id) {
+    const [m] = await db.select().from(members).where(and(eq(members.orgId, row.org.id), eq(members.id, switchedId), eq(members.active, true))).limit(1);
+    if (m) return { ...base, member: m, role: m.role as Role, switched: true };
+  }
+  return { ...base, member: row.member, role: row.member.role as Role, switched: false };
 });
 
 export class ForbiddenError extends Error {}

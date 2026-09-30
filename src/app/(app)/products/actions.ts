@@ -1,11 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, count, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db, brands, categories, products, variantBarcodes, variants } from "@/db";
 import { audit, ForbiddenError, withSession } from "@/lib/auth";
-import { inStoreEan13 } from "@/lib/barcode";
+import { nextInStoreBarcode } from "@/lib/catalog";
 import { can } from "@/lib/permissions";
 import { postOpeningStock } from "@/lib/stock-postings";
 import { nairobiDate } from "@/lib/time";
@@ -106,7 +106,7 @@ export async function createProduct(raw: ProductInput): Promise<{ error?: string
             })
             .returning({ id: variants.id });
 
-          const code = v.barcode || (v.generateBarcode ? await nextInStoreBarcode(tx, s.org.id) : null);
+          const code = v.barcode || (v.generateBarcode ? await nextInStoreBarcode(tx) : null);
           if (code) {
             await tx.insert(variantBarcodes).values({ orgId: s.org.id, variantId: row.id, code, source: v.barcode ? "manufacturer" : "generated" });
           }
@@ -128,16 +128,3 @@ export async function createProduct(raw: ProductInput): Promise<{ error?: string
 }
 
 class UserError extends Error {}
-
-/** Next free in-store EAN-13, based on how many generated codes the org already has. */
-async function nextInStoreBarcode(tx: Parameters<Parameters<typeof db.transaction>[0]>[0], orgId: number): Promise<string> {
-  const [{ n }] = await tx
-    .select({ n: count() })
-    .from(variantBarcodes)
-    .where(and(eq(variantBarcodes.orgId, orgId), eq(variantBarcodes.source, "generated")));
-  for (let seq = n + 1; ; seq++) {
-    const code = inStoreEan13(orgId, seq);
-    const [clash] = await tx.select({ id: variantBarcodes.id }).from(variantBarcodes).where(and(eq(variantBarcodes.orgId, orgId), eq(variantBarcodes.code, code))).limit(1);
-    if (!clash) return code;
-  }
-}

@@ -117,7 +117,7 @@ export default async function TodayPage() {
           <Card className="p-5 grid gap-2 content-start">
             <h2 className="text-[15px] font-semibold">Waiting for you</h2>
             <p className="text-[13.5px] text-ink-600">
-              {pending.n === 0 ? "No price suggestions to review." : <>{pending.n} price suggestion{pending.n === 1 ? "" : "s"} from staff. <Link className="text-brand-700 underline" href="/products">Review</Link></>}
+              {pending.n === 0 ? "No price suggestions to review." : <>{pending.n} price suggestion{pending.n === 1 ? "" : "s"} from staff. <Link className="text-brand-700 underline" href="/products/prices">Review</Link></>}
             </p>
           </Card>
         )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { cashMovement, endShift, findSale, payOnAccount, payOutExchangeCredit, returnItems, xReport, type ReturnableSale, type TillCustomer } from "./actions";
+import { cashMovement, discardParked, endShift, findSale, parkedList, payOnAccount, payOutExchangeCredit, recallSale, recentSales, returnItems, switchTillUser, tillPeople, xReport, type ParkedCart, type ParkedSummary, type RecentSale, type ReturnableSale, type TillCustomer, type TillPerson } from "./actions";
 import type { ShiftSummary } from "@/lib/cashup";
 import { parseKES } from "@/lib/money";
 import type { Role } from "@/lib/context";
@@ -57,7 +57,7 @@ export function PinPrompt({ title, onPin, onCancel }: { title: string; onPin: (p
   );
 }
 
-type Dialog = null | "x" | "cash" | "returns" | "account" | "close";
+type Dialog = null | "x" | "cash" | "returns" | "account" | "close" | "recent";
 
 export function MoreMenu(props: {
   registerId: number | null;
@@ -68,6 +68,7 @@ export function MoreMenu(props: {
   onCustomerChanged: (c: TillCustomer) => void;
   onShiftClosed: () => void;
   onExchange: (credit: ExchangeCredit, customer: TillCustomer) => void;
+  onReprint: (token: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -80,6 +81,7 @@ export function MoreMenu(props: {
   if (!props.registerId) return null;
   const registerId = props.registerId;
   const items: { key: Exclude<Dialog, null>; label: string; show: boolean }[] = [
+    { key: "recent", label: "Recent sales / reprint", show: true },
     { key: "returns", label: "Returns & exchanges", show: true },
     { key: "account", label: "Payment on account", show: true },
     { key: "cash", label: "Cash in / out", show: true },
@@ -100,6 +102,7 @@ export function MoreMenu(props: {
       {dialog === "cash" && <CashInOut registerId={registerId} expenseAccounts={props.expenseAccounts} onDone={(m) => { props.onMessage(m); setDialog(null); }} onClose={() => setDialog(null)} />}
       {dialog === "returns" && <Returns registerId={registerId} role={props.role} onMessage={props.onMessage} onExchange={(c, cust) => { setDialog(null); props.onExchange(c, cust); }} onClose={() => setDialog(null)} />}
       {dialog === "account" && <PayOnAccount registerId={registerId} customer={props.customer} onDone={(c, m) => { props.onCustomerChanged(c); props.onMessage(m); setDialog(null); }} onClose={() => setDialog(null)} />}
+      {dialog === "recent" && <RecentSales onReprint={props.onReprint} onClose={() => setDialog(null)} />}
       {dialog === "close" && <CloseTill registerId={registerId} onClosed={props.onShiftClosed} onClose={() => setDialog(null)} />}
     </div>
   );
@@ -400,6 +403,8 @@ function CloseTill({ registerId, onClosed, onClose }: { registerId: number; onCl
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const counted = [...NOTES, ...COINS].reduce((s, d) => s + (Number(counts[d]) || 0) * d, 0);
+  const [parked, setParked] = useState(0);
+  useEffect(() => { parkedList(registerId).then((r) => r.ok && setParked(r.data.length)); }, [registerId]);
 
   if (result) {
     const v = result.varianceCents;
@@ -419,6 +424,7 @@ function CloseTill({ registerId, onClosed, onClose }: { registerId: number; onCl
   return (
     <Modal title="Close the till — count the drawer" onClose={onClose} wide>
       <p className="text-[13px] text-ink-600">Count every note and coin. You'll see what the system expected only after you save.</p>
+      {parked > 0 && <p className="text-[13px] text-warn">{parked} sale{parked === 1 ? " is" : "s are"} still parked. They stay parked for the next shift — nothing was paid for them.</p>}
       <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2">
         {[...NOTES, ...COINS].map((d) => (
           <label key={d} className="flex items-center justify-between gap-3 text-[14px]">
@@ -442,6 +448,106 @@ function CloseTill({ registerId, onClosed, onClose }: { registerId: number; onCl
       >
         {pending ? "Closing…" : "Save count and close the till"}
       </button>
+    </Modal>
+  );
+}
+
+/* ---------------- Switch user ---------------- */
+
+export function SwitchUser({ onSwitched, onClose }: { onSwitched: (name: string) => void; onClose: () => void }) {
+  const [people, setPeople] = useState<TillPerson[] | null>(null);
+  const [who, setWho] = useState<TillPerson | null>(null);
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  useEffect(() => {
+    tillPeople().then((r) => (r.ok ? setPeople(r.data) : setError(r.error)));
+  }, []);
+  return (
+    <Modal title={who ? `PIN for ${who.name}` : "Who's using the till?"} onClose={onClose}>
+      {!who ? (
+        <div className="grid grid-cols-2 gap-2">
+          {people === null && !error && <p className="text-[13px] text-ink-400 col-span-2">Loading…</p>}
+          {people?.map((p) => (
+            <button key={p.id} disabled={!p.hasPin} onClick={() => { setWho(p); setPin(""); setError(null); }} className="rounded-xl border-[0.5px] border-ink-200 p-3 text-left hover:border-brand cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+              <div className="font-semibold text-[14px]">{p.name}</div>
+              <div className="text-[12px] text-ink-400 capitalize">{p.hasPin ? p.role : "No PIN yet"}</div>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <form className="grid gap-3" onSubmit={(e) => { e.preventDefault(); start(async () => { const r = await switchTillUser(who.id, pin); if (r.ok) onSwitched(r.data.name); else { setError(r.error); setPin(""); } }); }}>
+          <input autoFocus type="password" inputMode="numeric" autoComplete="off" maxLength={6} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} className={`${inputCls} text-center text-[24px] tracking-[0.5em]`} aria-label="PIN" />
+          <div className="flex gap-2">
+            <button type="button" className={secondary} onClick={() => setWho(null)}>Back</button>
+            <button className={`${primary} flex-1`} disabled={pending || pin.length < 4}>{pending ? "Checking…" : "Switch"}</button>
+          </div>
+        </form>
+      )}
+      {error && <p className="text-bad text-[13px]">{error}</p>}
+      <p className="text-[12px] text-ink-400">Every sale is recorded under the person using the till. Staff set their PIN once under Settings → My PIN.</p>
+    </Modal>
+  );
+}
+
+/* ---------------- Parked sales ---------------- */
+
+export function ParkedSales({ registerId, cartHasItems, onRecall, onClose }: { registerId: number; cartHasItems: boolean; onRecall: (cart: ParkedCart, customer: TillCustomer | null) => void; onClose: () => void }) {
+  const [rows, setRows] = useState<ParkedSummary[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const load = () => parkedList(registerId).then((r) => (r.ok ? setRows(r.data) : setError(r.error)));
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <Modal title="Parked sales" onClose={onClose}>
+      {cartHasItems && <p className="text-[13px] text-warn">Park or finish the current sale before taking one back.</p>}
+      {rows === null && !error && <p className="text-[13px] text-ink-400">Loading…</p>}
+      {rows?.length === 0 && <p className="text-[13px] text-ink-400">Nothing parked.</p>}
+      <ul className="grid gap-2">
+        {rows?.map((r) => (
+          <li key={r.id} className="flex items-center justify-between gap-3 rounded-lg border-[0.5px] border-ink-200 px-3 py-2.5 text-[13.5px]">
+            <span><b>{r.label}</b><span className="text-ink-400"> · {r.items} item{r.items === 1 ? "" : "s"} · {new Date(r.createdAt).toLocaleTimeString("en-KE", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit" })}</span></span>
+            <span className="flex gap-2">
+              <button disabled={pending || cartHasItems} onClick={() => start(async () => { const x = await recallSale(r.id); if (x.ok) onRecall(x.data.cart, x.data.customer); else setError(x.error); })} className="h-9 px-3 rounded-lg bg-brand text-brand-ink text-[13px] font-medium cursor-pointer disabled:opacity-40">Take back</button>
+              <button disabled={pending} onClick={() => start(async () => { await discardParked(r.id); load(); })} className="h-9 px-2 text-[12.5px] text-ink-400 hover:text-bad cursor-pointer">Remove</button>
+            </span>
+          </li>
+        ))}
+      </ul>
+      {error && <p className="text-bad text-[13px]">{error}</p>}
+    </Modal>
+  );
+}
+
+/* ---------------- Recent sales & reprint ---------------- */
+
+export function RecentSales({ onReprint, onClose }: { onReprint: (token: string) => void; onClose: () => void }) {
+  const [q, setQ] = useState("");
+  const [rows, setRows] = useState<RecentSale[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const search = (query: string) => start(async () => { const r = await recentSales(query); if (r.ok) { setRows(r.data); setError(null); } else setError(r.error); });
+  useEffect(() => { search(""); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <Modal title="Recent sales" onClose={onClose} wide>
+      <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); search(q); }}>
+        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Receipt no., phone, M-Pesa code or name — blank for today" className={inputCls} />
+        <button className={secondary} disabled={pending}>Search</button>
+      </form>
+      {error && <p className="text-bad text-[13px]">{error}</p>}
+      {rows?.length === 0 && <p className="text-[13px] text-ink-400">No sales found.</p>}
+      <ul className="grid gap-1.5">
+        {rows?.map((r) => (
+          <li key={r.id} className="flex items-center justify-between gap-3 rounded-lg border-[0.5px] border-ink-200 px-3 py-2 text-[13.5px]">
+            <span><b>{r.receiptNo}</b><span className="text-ink-400"> · {new Date(r.createdAt).toLocaleString("en-KE", { timeZone: "Africa/Nairobi", dateStyle: "short", timeStyle: "short" })} · {r.customer}</span>{r.status !== "completed" && <span className="text-warn"> · {r.status.replace("_", " ")}</span>}</span>
+            <span className="flex items-center gap-3">
+              <span className="tnum font-medium">{kes(r.totalCents)}</span>
+              <a href={`/r/${r.token}`} target="_blank" className="text-[12.5px] underline text-ink-600">View</a>
+              <button onClick={() => onReprint(r.token)} className="h-8 px-3 rounded-md border-[0.5px] border-ink-200 text-[12.5px] cursor-pointer hover:bg-ink-50">Reprint</button>
+            </span>
+          </li>
+        ))}
+      </ul>
     </Modal>
   );
 }

@@ -1,6 +1,6 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { brands, products, receivingLines, receivings, suppliers, variantBarcodes, variants, type DbOrTx, type Tx } from "@/db";
-import { inStoreEan13 } from "./barcode";
+import { nextInStoreBarcode } from "./catalog";
 import { ctx } from "./context";
 import { postBill } from "./purchasing";
 
@@ -156,14 +156,7 @@ export async function createItemFromScan(tx: Tx, p: NewItemInput): Promise<{ pro
     .values({ orgId, productId, option1Value, retailPriceCents: p.retailPriceCents, wholesalePriceCents: p.wholesalePriceCents, swatchHex: p.swatchHex })
     .returning({ id: variants.id });
 
-  let barcode = p.barcode;
-  if (!barcode) {
-    const [{ n }] = await tx.select({ n: sql<number>`count(*)::int` }).from(variantBarcodes).where(and(eq(variantBarcodes.orgId, orgId), eq(variantBarcodes.source, "generated")));
-    for (let seq = n + 1; ; seq++) {
-      const code = inStoreEan13(orgId, seq);
-      if (!(await variantByBarcode(tx, code))) { barcode = code; break; }
-    }
-  }
-  await tx.insert(variantBarcodes).values({ orgId, variantId: v.id, code: barcode!, source: p.barcode ? "manufacturer" : "generated" });
-  return { productId, variantId: v.id, barcode: barcode! };
+  const barcode = p.barcode ?? (await nextInStoreBarcode(tx));
+  await tx.insert(variantBarcodes).values({ orgId, variantId: v.id, code: barcode, source: p.barcode ? "manufacturer" : "generated" });
+  return { productId, variantId: v.id, barcode };
 }

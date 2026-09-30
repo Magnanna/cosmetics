@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { completeSale, lookupCustomer, quickCreateCustomer, startShift, type TillCustomer } from "./actions";
-import { MoreMenu, PinPrompt, type ExchangeCredit } from "./till-dialogs";
+import { completeSale, lookupCustomer, parkSale, parkedList, quickCreateCustomer, startShift, type ParkedCart, type TillCustomer } from "./actions";
+import { MoreMenu, ParkedSales, PinPrompt, SwitchUser, type ExchangeCredit } from "./till-dialogs";
+import { useRouter } from "next/navigation";
 import { applyOffers, type OfferDef } from "@/lib/offers";
 import { fmtPoints } from "@/lib/loyalty";
 import { choosePrinter, inDesktopApp, listPrinters, openDrawer, printReceipt, printTestPage } from "@/lib/print-client";
@@ -70,6 +71,14 @@ export function TillApp(props: {
   /** Owner PIN typed to approve a discount above the cashier limit (checked again on the server). */
   const [ownerPin, setOwnerPin] = useState<string | null>(null);
   const [exchange, setExchange] = useState<ExchangeCredit | null>(null);
+  const [switching, setSwitching] = useState(false);
+  const [showParked, setShowParked] = useState(false);
+  const [parkedCount, setParkedCount] = useState(0);
+  const router = useRouter();
+  const refreshParked = useCallback(() => {
+    if (props.registerId) parkedList(props.registerId).then((r) => r.ok && setParkedCount(r.data.length));
+  }, [props.registerId]);
+  useEffect(() => { refreshParked(); }, [refreshParked]);
   const [clock, setClock] = useState(() => new Date());
   useEffect(() => {
     const t = setInterval(() => setClock(new Date()), 60_000);
@@ -151,6 +160,7 @@ export function TillApp(props: {
       const inOtherField = (target.tagName === "INPUT" || target.tagName === "TEXTAREA") && target !== searchRef.current;
       if (e.key === "F2") { e.preventDefault(); searchRef.current?.focus(); return; }
       if (e.key === "F4") { e.preventDefault(); phoneRef.current?.focus(); return; }
+      if (e.key === "F8") { e.preventDefault(); (Array.from(document.querySelectorAll("button")).find((b) => b.textContent?.startsWith("Park sale")) as HTMLButtonElement | undefined)?.click(); return; }
       if (inOtherField) return;
       const now = performance.now();
       if (now - last > 60) buffer = "";
@@ -244,9 +254,15 @@ export function TillApp(props: {
             onCustomerChanged={setCustomer}
             onShiftClosed={() => { resetSale(); setShiftOpen(false); }}
             onExchange={(credit, c) => { resetSale(); setCustomer(c); setExchange(credit); setToast(`Exchange credit KES ${kes(credit.creditLeftCents)} ready — add the new items.`); }}
+            onReprint={(token) => printReceipt(token, false, true).then(() => setToast("Reprint sent.")).catch((e) => setToast(`Receipt didn't print: ${e.message}`))}
           />
           <PrinterMenu shopName={props.shopName} onMessage={setToast} />
-          <span className="hidden sm:inline">{props.cashierName}</span>
+          {parkedCount > 0 && <button onClick={() => setShowParked(true)} className="text-brand-700 font-medium cursor-pointer">Parked ({parkedCount})</button>}
+          <button onClick={() => setSwitching(true)} className="flex items-center gap-1.5 cursor-pointer hover:text-ink-900" title="Switch who is using the till">
+            <span className="w-6 h-6 rounded-full bg-brand-tint text-brand-700 grid place-items-center text-[11px] font-bold">{props.cashierName.slice(0, 1).toUpperCase()}</span>
+            <span className="hidden sm:inline">{props.cashierName}</span>
+            <span className="text-ink-400">· Switch</span>
+          </button>
           {props.role !== "cashier" && <Link href="/" className="text-brand-700 underline">Back office</Link>}
         </div>
       </header>
@@ -383,7 +399,25 @@ export function TillApp(props: {
             >
               {!customer && lines.length > 0 ? "Add the customer's phone to check out" : "Checkout"}
             </button>
-            {lines.length > 0 && <button className="text-[12.5px] text-ink-400 hover:text-bad cursor-pointer" onClick={resetSale}>Clear sale</button>}
+            {lines.length > 0 && (
+              <div className="flex justify-between">
+                <button
+                  className="text-[12.5px] text-brand-700 underline cursor-pointer"
+                  onClick={async () => {
+                    const label = customer ? customer.businessName || customer.name || customer.phoneMasked : "";
+                    const cartData: ParkedCart = { lines: cart.map((l) => ({ variantId: l.variantId, qty: l.qty, discountCents: l.discountCents })), cartDiscountCents };
+                    const r = await parkSale(props.registerId!, label, customer?.id ?? null, cartData);
+                    if (!r.ok) return setToast(r.error);
+                    resetSale();
+                    refreshParked();
+                    setToast("Sale parked. Take it back from “Parked” at the top.");
+                  }}
+                >
+                  Park sale (F8)
+                </button>
+                <button className="text-[12.5px] text-ink-400 hover:text-bad cursor-pointer" onClick={resetSale}>Clear sale</button>
+              </div>
+            )}
           </div>
         </aside>
       </div>
@@ -410,6 +444,26 @@ export function TillApp(props: {
             setDone({ receiptNo: res.data.receiptNo, receiptToken: res.data.receiptToken, changeCents: res.data.changeCents, totalCents: res.data.totalCents, pointsEarned: res.data.pointsEarned, pointsBalance: customer.earnsPoints ? res.data.pointsBalance : null });
             printReceipt(res.data.receiptToken, payments.some((p) => p.method === "cash")).catch((e) => setToast(`Receipt didn't print: ${e.message}`));
             return null;
+          }}
+        />
+      )}
+      {switching && <SwitchUser onClose={() => setSwitching(false)} onSwitched={(name) => { setSwitching(false); resetSale(); setToast(`${name} is now using the till.`); router.refresh(); }} />}
+      {showParked && (
+        <ParkedSales
+          registerId={props.registerId}
+          cartHasItems={cart.length > 0}
+          onClose={() => { setShowParked(false); refreshParked(); }}
+          onRecall={(parked, c) => {
+            const known = parked.lines.filter((l) => variantIndex.byId.has(l.variantId));
+            setCart(known.map((l) => {
+              const { product, variant } = variantIndex.byId.get(l.variantId)!;
+              return { variantId: l.variantId, productName: product.name, label: variant.label, qty: l.qty, discountCents: l.discountCents };
+            }));
+            setCartDiscountCents(parked.cartDiscountCents);
+            setCustomer(c);
+            setShowParked(false);
+            refreshParked();
+            if (known.length < parked.lines.length) setToast("Some items are no longer sold and were left out.");
           }}
         />
       )}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { forgetTillUser } from "@/app/till/actions";
 
 export interface NavGroup {
   label: string;
@@ -18,6 +19,7 @@ export function Sidebar({ groups, shopName, userName, roleLabel }: { groups: Nav
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
 
   async function signOut() {
+    await forgetTillUser();
     await supabaseBrowser().auth.signOut();
     router.replace("/login");
     router.refresh();

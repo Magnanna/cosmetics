@@ -1,8 +1,8 @@
 "use server";
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, or } from "drizzle-orm";
 import { z } from "zod";
-import { db, customers, orgs, registers, saleLines, saleReturns, sales } from "@/db";
+import { db, customers, members, orgs, parkedSales, registers, salePayments, saleLines, saleReturns, sales } from "@/db";
 import { audit, ForbiddenError, withSession } from "@/lib/auth";
 import { CashError, closeShift, DENOMINATIONS, recordCashMovement, shiftSummary, type CashReason, type ShiftSummary } from "@/lib/cashup";
 import { checkout, CheckoutError, type CheckoutResult } from "@/lib/checkout";
@@ -10,7 +10,9 @@ import { CreditError, receiveCustomerPayment } from "@/lib/credit";
 import { createCustomer, creditOwedCents, CustomerError, earnsPoints, findCustomerByPhone, type Customer } from "@/lib/customers";
 import { canRedeem, pointsValueCents } from "@/lib/loyalty";
 import { maskPhone, normalizeKenyanPhone } from "@/lib/phone";
-import { PinError, verifyOwnerPin } from "@/lib/pin";
+import { PinError, verifyMemberPin, verifyOwnerPin } from "@/lib/pin";
+import { clearTillUser, setTillUser } from "@/lib/till-session";
+import { getSession } from "@/lib/auth";
 import { processReturn, refundExchangeCredit, ReturnError } from "@/lib/returns";
 import { openShift, openShiftFor, ShiftError } from "@/lib/shifts";
 import { sendSaleReceiptSms } from "@/lib/sms";
@@ -311,6 +313,132 @@ export async function payOnAccount(registerId: number, input: { customerId: numb
       });
       const [c] = await db.select().from(customers).where(and(eq(customers.orgId, s.org.id), eq(customers.id, input.customerId))).limit(1);
       return toTillCustomer(c);
+    })
+  );
+}
+
+/* ---------------- Switching staff on the till ---------------- */
+
+export interface TillPerson { id: number; name: string; role: string; hasPin: boolean }
+
+export async function tillPeople(): Promise<Result<TillPerson[]>> {
+  return guard(async () => {
+    const s = await getSession();
+    if (!s) throw new ForbiddenError("Please sign in again.");
+    const rows = await db.select().from(members).where(and(eq(members.orgId, s.org.id), eq(members.active, true))).orderBy(asc(members.name));
+    return rows.map((m) => ({ id: m.id, name: m.name || m.email, role: m.role, hasPin: !!m.pinHash }));
+  });
+}
+
+/** Switches who is using the till. Always needs that person's PIN — including switching back to the owner. */
+export async function switchTillUser(memberId: number, pin: string): Promise<Result<{ name: string; role: string }>> {
+  return guard(async () => {
+    const s = await getSession();
+    if (!s) throw new ForbiddenError("Please sign in again.");
+    await runAs(s.org.id, s.member.id, s.role, () => verifyMemberPin(memberId, pin));
+    const [m] = await db.select().from(members).where(and(eq(members.orgId, s.org.id), eq(members.id, memberId))).limit(1);
+    await setTillUser(s.org.id, m.id, s.userId);
+    await runAs(s.org.id, m.id, m.role, () => db.transaction((tx) => audit(tx, { action: "till.switch_user", entity: "member", entityId: m.id, after: { from: s.member.id } })));
+    return { name: m.name || m.email, role: m.role };
+  });
+}
+
+/** Full sign-out of the device also forgets the switched-in person. */
+export async function forgetTillUser(): Promise<void> {
+  await clearTillUser();
+}
+
+async function runAs<T>(orgId: number, memberId: number, role: string, fn: () => Promise<T>): Promise<T> {
+  const { runWithOrg } = await import("@/lib/context");
+  return runWithOrg({ orgId, memberId, role: role as never }, fn);
+}
+
+/* ---------------- Park & recall ---------------- */
+
+export interface ParkedCart { lines: { variantId: number; qty: number; discountCents: number }[]; cartDiscountCents: number }
+export interface ParkedSummary { id: number; label: string; createdAt: string; items: number; customerId: number | null }
+
+export async function parkSale(registerId: number, label: string, customerId: number | null, cart: ParkedCart): Promise<Result<number>> {
+  return guard(() =>
+    withSession("till.sell", async (s) => {
+      if (cart.lines.length === 0) throw new CheckoutError("Nothing to park.");
+      const [reg] = await db.select({ id: registers.id }).from(registers).where(and(eq(registers.orgId, s.org.id), eq(registers.id, registerId))).limit(1);
+      if (!reg) throw new ShiftError("Unknown till.");
+      const clean: ParkedCart = {
+        lines: cart.lines.slice(0, 200).map((l) => ({ variantId: Math.floor(l.variantId), qty: Math.max(1, Math.floor(l.qty)), discountCents: Math.max(0, Math.floor(l.discountCents)) })),
+        cartDiscountCents: Math.max(0, Math.floor(cart.cartDiscountCents)),
+      };
+      const [row] = await db.insert(parkedSales).values({ orgId: s.org.id, registerId, label: label.trim().slice(0, 40) || `Parked ${new Date().toLocaleTimeString("en-KE", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit" })}`, customerId, cart: clean, memberId: s.member.id }).returning({ id: parkedSales.id });
+      return row.id;
+    })
+  );
+}
+
+export async function parkedList(registerId: number): Promise<Result<ParkedSummary[]>> {
+  return guard(() =>
+    withSession("till.sell", async (s) => {
+      const rows = await db.select().from(parkedSales).where(and(eq(parkedSales.orgId, s.org.id), eq(parkedSales.registerId, registerId))).orderBy(asc(parkedSales.createdAt));
+      return rows.map((r) => ({ id: r.id, label: r.label, createdAt: r.createdAt.toISOString(), items: (r.cart as ParkedCart).lines.reduce((a, l) => a + l.qty, 0), customerId: r.customerId }));
+    })
+  );
+}
+
+/** Takes a parked sale back (and removes it from the list). */
+export async function recallSale(parkedId: number): Promise<Result<{ cart: ParkedCart; customer: TillCustomer | null }>> {
+  return guard(() =>
+    withSession("till.sell", async (s) => {
+      const [row] = await db.delete(parkedSales).where(and(eq(parkedSales.orgId, s.org.id), eq(parkedSales.id, parkedId))).returning();
+      if (!row) throw new CheckoutError("That parked sale was already taken back.");
+      let customer: TillCustomer | null = null;
+      if (row.customerId) {
+        const [c] = await db.select().from(customers).where(and(eq(customers.orgId, s.org.id), eq(customers.id, row.customerId))).limit(1);
+        if (c) customer = await toTillCustomer(c);
+      }
+      return { cart: row.cart as ParkedCart, customer };
+    })
+  );
+}
+
+export async function discardParked(parkedId: number): Promise<Result<null>> {
+  return guard(() =>
+    withSession("till.sell", async (s) => {
+      await db.delete(parkedSales).where(and(eq(parkedSales.orgId, s.org.id), eq(parkedSales.id, parkedId)));
+      return null;
+    })
+  );
+}
+
+/* ---------------- Recent sales & reprint ---------------- */
+
+export interface RecentSale { id: number; receiptNo: string; token: string; createdAt: string; totalCents: number; customer: string; status: string; cash: boolean }
+
+export async function recentSales(query: string): Promise<Result<RecentSale[]>> {
+  return guard(() =>
+    withSession("till.sell", async (s) => {
+      const q = query.trim();
+      const phone = normalizeKenyanPhone(q);
+      const conds = [eq(sales.orgId, s.org.id)];
+      if (/^KF-?\d+$/i.test(q)) conds.push(eq(sales.receiptNo, `KF-${q.replace(/\D/g, "").padStart(6, "0")}`));
+      else if (phone) conds.push(eq(customers.phone, phone));
+      else if (/^[A-Za-z0-9]{10}$/.test(q)) conds.push(eq(salePayments.mpesaCode, q.toUpperCase()));
+      else if (q) conds.push(or(ilike(customers.name, `%${q}%`), ilike(customers.businessName, `%${q}%`))!);
+      else conds.push(eq(sales.businessDate, nairobiDate()));
+      const rows = await db
+        .selectDistinct({ sale: sales, name: customers.name, biz: customers.businessName, phone: customers.phone })
+        .from(sales)
+        .innerJoin(customers, eq(customers.id, sales.customerId))
+        .leftJoin(salePayments, eq(salePayments.saleId, sales.id))
+        .where(and(...conds))
+        .orderBy(desc(sales.createdAt))
+        .limit(30);
+      const ids = rows.map((r) => r.sale.id);
+      const cashIds = ids.length
+        ? new Set((await db.select({ id: salePayments.saleId }).from(salePayments).where(and(eq(salePayments.orgId, s.org.id), eq(salePayments.method, "cash"), inArray(salePayments.saleId, ids)))).map((x) => x.id))
+        : new Set<number>();
+      return rows.map((r) => ({
+        id: r.sale.id, receiptNo: r.sale.receiptNo, token: r.sale.receiptToken, createdAt: r.sale.createdAt.toISOString(), totalCents: r.sale.totalCents,
+        customer: r.biz || r.name || maskPhone(r.phone), status: r.sale.status, cash: cashIds.has(r.sale.id),
+      }));
     })
   );
 }

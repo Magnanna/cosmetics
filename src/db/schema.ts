@@ -764,3 +764,16 @@ export const mpesaStatementLines = pgTable("mpesa_statement_lines", {
   customerPaymentId: integer("customer_payment_id"),
   posAmountCents: money("pos_amount_cents"),
 }, (t) => [uniqueIndex("uq_mpesa_lines_org_code").on(t.orgId, t.code), index("idx_mpesa_lines_import").on(t.importId)]);
+
+/** A sale put on hold at the till while the customer keeps shopping. */
+export const parkedSales = pgTable("parked_sales", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  registerId: integer("register_id").notNull().references(() => registers.id),
+  label: text("label").notNull(),
+  customerId: integer("customer_id"),
+  /** { lines: [{variantId, qty, discountCents}], cartDiscountCents } */
+  cart: jsonb("cart").notNull(),
+  memberId: integer("member_id").notNull(),
+  createdAt: createdAt(),
+}, (t) => [index("idx_parked_org_register").on(t.orgId, t.registerId)]);

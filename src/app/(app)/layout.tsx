@@ -8,6 +8,7 @@ const NAV: { label: string; items: { href: string; label: string; perm: Permissi
     items: [
       { href: "/", label: "Today", perm: null },
       { href: "/till", label: "Open the till", perm: "till.sell" },
+      { href: "/sales/history", label: "Sales", perm: "reports.view" },
       { href: "/sales/shifts", label: "Shifts & cash-ups", perm: "reports.view" },
     ],
   },
@@ -24,6 +25,7 @@ const NAV: { label: string; items: { href: string; label: string; perm: Permissi
       { href: "/products", label: "Catalogue", perm: "catalog.view" },
       { href: "/products/brands", label: "Brands", perm: "catalog.edit" },
       { href: "/products/categories", label: "Categories", perm: "catalog.edit" },
+      { href: "/products/prices", label: "Price suggestions", perm: "catalog.set_prices" },
     ],
   },
   {
@@ -55,6 +57,7 @@ const NAV: { label: string; items: { href: string; label: string; perm: Permissi
       { href: "/settings/team", label: "Team", perm: "team.manage" },
       { href: "/settings/opening", label: "Opening balances", perm: "books.post" },
       { href: "/settings/books", label: "Close the books", perm: "books.lock" },
+      { href: "/settings/activity", label: "Activity log", perm: "settings.edit" },
       { href: "/settings/pin", label: "My PIN", perm: null },
       { href: "/settings/messages", label: "SMS messages", perm: "settings.edit" },
     ],
