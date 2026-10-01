@@ -1,3 +1,5 @@
+import { colorWords } from "./brand";
+
 /** Poster wording for an offer — exact text the app draws (never left to an image model). Pure. */
 
 export function offerHeadline(type: string, value: number): string {
@@ -20,5 +22,5 @@ export function offerPrice(type: string, value: number, priceCents: number): num
 }
 
 export function backdropPrompt(brandHex: string): string {
-  return `Minimal, elegant beauty product advertising backdrop. Soft studio light, smooth seamless paper background in a delicate tint of ${brandHex}, a simple round podium in the lower middle, subtle soft shadows, a few out-of-focus abstract shapes at the edges. Empty scene: no products, no people, no text, no letters, no logos. Clean, premium, lots of empty space in the top third.`;
-}
+  const c = colorWords(brandHex);
+  return `High-key, bright and airy minimal beauty product advertising backdrop. Mostly very light: a near-white seamless paper background with a soft pastel blush of ${c}, gentle diffused daylight, no dark areas. A simple round podium in a slightly deeper pastel ${c} in the lower middle, soft shadows, a few out-of-focus pastel shapes at the edges. Empty scene: no products, no people, no text, no letters, no logos. Lots of clean, light empty space in the top half.`;}

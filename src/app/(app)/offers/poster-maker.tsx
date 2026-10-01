@@ -78,6 +78,16 @@ async function draw(canvas: HTMLCanvasElement, d: PosterData, format: Format) {
     ctx.fillRect(0, 0, W, H);
   }
 
+  // White wash behind the wording so text stays readable on any backdrop.
+  if (backdrop) {
+    const wash = ctx.createLinearGradient(0, 0, 0, H * (format === "story" ? 0.42 : 0.5));
+    wash.addColorStop(0, "rgba(255,255,255,0.88)");
+    wash.addColorStop(0.75, "rgba(255,255,255,0.6)");
+    wash.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = wash;
+    ctx.fillRect(0, 0, W, H * (format === "story" ? 0.42 : 0.5));
+  }
+
   const pad = 72;
   let y = format === "story" ? 150 : 70;
 

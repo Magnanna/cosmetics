@@ -53,3 +53,10 @@ test("printed receipt starts with the logo when the shop has one", () => {
   const bad = receiptBytes({ ...r, shop: { ...r.shop, logoPrint: "%%%not base64" } }, { openDrawer: false, reprint: false });
   assert.ok(bad.length > 0);
 });
+
+test("colour words for image prompts", async () => {
+  const { colorWords } = await import("../src/lib/brand");
+  assert.match(colorWords("#5A2132"), /burgundy/);
+  assert.match(colorWords("#0F766E"), /teal/);
+  assert.match(colorWords("#1E3A5F"), /navy/);
+});

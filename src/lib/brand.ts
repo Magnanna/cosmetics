@@ -81,3 +81,28 @@ export function brandCss(input: string | null | undefined): string | null {
   const p = brandPalette(input);
   return `:root{--color-brand:${p.brand};--color-brand-600:${p.brand600};--color-brand-700:${p.brand700};--color-brand-ink:${p.brandInk};--color-brand-ring:${p.brandRing};--color-brand-tint:${p.brandTint};--color-brand-wash:${p.brandWash};--color-ring:${p.brandRing}}`;
 }
+
+/** Plain-English colour words for image prompts (models ignore hex codes). */
+export function colorWords(input: string): string {
+  const hex = isHexColor(input) ? input : DEFAULT_BRAND;
+  const [r, g, b] = rgb(hex).map((c) => c / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  const sat = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  let h = 0;
+  if (d) h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  h = (h * 60 + 360) % 360;
+  if (sat < 0.12) return l < 0.3 ? "charcoal grey" : l > 0.75 ? "soft warm white" : "neutral grey";
+  const name =
+    h < 15 || h >= 335 ? (l < 0.4 ? "wine burgundy" : "rose red")
+    : h < 40 ? (l < 0.4 ? "cocoa brown" : "terracotta peach")
+    : h < 65 ? "golden yellow"
+    : h < 160 ? (l < 0.4 ? "forest green" : "sage green")
+    : h < 200 ? "teal"
+    : h < 250 ? (l < 0.4 ? "navy blue" : "sky blue")
+    : h < 290 ? (l < 0.4 ? "deep purple" : "lavender")
+    : l < 0.4 ? "plum" : "dusty rose";
+  return `${l < 0.3 ? "deep " : l > 0.72 ? "pale " : ""}${name}`;
+}
