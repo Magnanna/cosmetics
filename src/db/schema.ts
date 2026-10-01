@@ -57,6 +57,8 @@ export const orgs = pgTable("orgs", {
   /** Loyalty: minimum balance value before points can be redeemed. */
   loyaltyMinRedeemCents: money("loyalty_min_redeem_cents").notNull().default(10_000),
   clockInEnabled: boolean("clock_in_enabled").notNull().default(false),
+  /** Reorder list: how many days of sales the shelf should hold after a delivery. */
+  reorderCoverDays: integer("reorder_cover_days").notNull().default(14),
   receiptFooter: text("receipt_footer"),
   createdAt: createdAt(),
 });
@@ -247,6 +249,8 @@ export const suppliers = pgTable("suppliers", {
   address: text("address"),
   paymentDetails: text("payment_details"),
   termsDays: integer("terms_days").notNull().default(0),
+  /** Days from ordering to the goods arriving (for reorder suggestions). */
+  leadTimeDays: integer("lead_time_days").notNull().default(7),
   archived: boolean("archived").notNull().default(false),
   createdAt: createdAt(),
 }, (t) => [index("idx_suppliers_org").on(t.orgId)]);

@@ -19,6 +19,7 @@ export function SupplierForm() {
       <Field label="KRA PIN"><Input id="s-pin" name="kraPin" /></Field>
       <Field label="How to pay them" hint="Paybill, account no., bank"><Input id="s-pay" name="paymentDetails" placeholder="Paybill 600100 · Acc 0100008849848" /></Field>
       <Field label="Credit terms (days)" hint="0 = pay on delivery" error={state.error}><Input id="s-terms" name="termsDays" inputMode="numeric" defaultValue="0" /></Field>
+      <Field label="Delivery time (days)" hint="From ordering to the goods arriving"><Input id="s-lead" name="leadTimeDays" inputMode="numeric" defaultValue="7" /></Field>
       <Button type="submit" disabled={pending}>{pending ? "Saving…" : "Add supplier"}</Button>
     </form>
   );

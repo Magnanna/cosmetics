@@ -1,3 +1,4 @@
+import { LeadTime } from "./lead-time";
 import { and, asc, eq } from "drizzle-orm";
 import { db, suppliers } from "@/db";
 import { requirePage } from "@/lib/auth";
@@ -22,6 +23,7 @@ export default async function SuppliersPage() {
                   <th className="px-4 py-3 font-semibold">Phone</th>
                   <th className="px-4 py-3 font-semibold">KRA PIN</th>
                   <th className="px-4 py-3 font-semibold text-right">Terms</th>
+                  <th className="px-4 py-3 font-semibold text-right">Delivers in</th>
                 </tr>
               </thead>
               <tbody>
@@ -31,6 +33,7 @@ export default async function SuppliersPage() {
                     <td className="px-4 py-3 text-ink-600 tnum">{r.phone ?? "—"}</td>
                     <td className="px-4 py-3 text-ink-600">{r.kraPin ?? "—"}</td>
                     <td className="px-4 py-3 text-right tnum">{r.termsDays ? `${r.termsDays} days` : "On delivery"}</td>
+                    <td className="px-4 py-3 text-right"><LeadTime supplierId={r.id} days={r.leadTimeDays} /></td>
                   </tr>
                 ))}
               </tbody>

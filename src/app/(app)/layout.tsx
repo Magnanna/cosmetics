@@ -35,6 +35,7 @@ const NAV: { label: string; items: { href: string; label: string; perm: Permissi
     items: [
       { href: "/stock/receive", label: "Receive stock", perm: "stock.receive" },
       { href: "/stock/bills", label: "Supplier invoices", perm: "stock.receive" },
+      { href: "/stock/reorder", label: "Reorder list", perm: "stock.receive" },
       { href: "/stock/counts", label: "Stock take", perm: "stock.count" },
       { href: "/stock/adjust", label: "Adjust stock", perm: "stock.receive" },
       { href: "/suppliers", label: "Suppliers", perm: "suppliers.edit" },

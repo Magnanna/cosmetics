@@ -10,7 +10,7 @@ import { fmtPoints } from "./loyalty";
  * Without a working setup, messages are logged as "skipped" and nothing is sent.
  */
 
-export type SmsCategory = "receipt" | "credit" | "points" | "owner" | "marketing";
+export type SmsCategory = "receipt" | "credit" | "points" | "owner" | "marketing" | "supplier";
 
 const ADVANTA_URL = "https://quicksms.advantasms.com/api/services/sendsms/";
 

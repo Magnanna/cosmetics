@@ -12,7 +12,7 @@ function Result({ state }: { state: { error?: string; ok?: string } }) {
 
 export interface ShopValues {
   name: string; phone: string; address: string; kraPin: string; receiptFooter: string;
-  cashierDiscountLimit: number; returnWindowHours: number; loyaltyEarnKes: number; loyaltyPointValue: number; loyaltyMinRedeem: number; totRatePct: number;
+  cashierDiscountLimit: number; returnWindowHours: number; reorderCoverDays: number; loyaltyEarnKes: number; loyaltyPointValue: number; loyaltyMinRedeem: number; totRatePct: number;
 }
 
 export function ShopForm({ v }: { v: ShopValues }) {
@@ -31,6 +31,7 @@ export function ShopForm({ v }: { v: ShopValues }) {
         <h2 className="text-[13.5px] font-semibold sm:col-span-2">Till rules</h2>
         <Field label="Cashier discount limit (KES)" hint="Above this the owner enters their PIN"><Input id="s-disc" name="cashierDiscountLimit" inputMode="decimal" defaultValue={v.cashierDiscountLimit} /></Field>
         <Field label="Return window (hours)"><Input id="s-ret" name="returnWindowHours" inputMode="numeric" defaultValue={v.returnWindowHours} /></Field>
+        <Field label="Days of stock after a delivery" hint="The reorder list orders enough to last this long"><Input id="s-cover" name="reorderCoverDays" inputMode="numeric" defaultValue={v.reorderCoverDays} /></Field>
       </div>
       <div className="card p-5 grid gap-3 sm:grid-cols-3">
         <h2 className="text-[13.5px] font-semibold sm:col-span-3">Loyalty points</h2>

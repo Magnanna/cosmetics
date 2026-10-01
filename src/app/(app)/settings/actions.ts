@@ -24,6 +24,7 @@ const Shop = z.object({
   receiptFooter: z.string().trim().max(200).optional(),
   cashierDiscountLimit: z.coerce.number().min(0).max(100_000),
   returnWindowHours: z.coerce.number().int().min(0).max(720),
+  reorderCoverDays: z.coerce.number().int().min(1).max(120),
   loyaltyEarnKes: z.coerce.number().min(1).max(10_000),
   loyaltyPointValue: z.coerce.number().min(0.01).max(100),
   loyaltyMinRedeem: z.coerce.number().min(0).max(100_000),
@@ -41,7 +42,7 @@ export async function saveShop(_: unknown, form: FormData): Promise<State> {
       db.transaction(async (tx) => {
         const values = {
           name: v.name, phone, address: v.address || null, kraPin: v.kraPin?.toUpperCase() || null, receiptFooter: v.receiptFooter || null,
-          cashierDiscountLimitCents: Math.round(v.cashierDiscountLimit * 100), returnWindowHours: v.returnWindowHours,
+          cashierDiscountLimitCents: Math.round(v.cashierDiscountLimit * 100), returnWindowHours: v.returnWindowHours, reorderCoverDays: v.reorderCoverDays,
           loyaltyEarnCentsPerPoint: Math.round(v.loyaltyEarnKes * 100), loyaltyPointValueCents: Math.round(v.loyaltyPointValue * 100),
           loyaltyMinRedeemCents: Math.round(v.loyaltyMinRedeem * 100), totRateBp: Math.round(v.totRatePct * 100),
         };
