@@ -20,7 +20,7 @@ const LABELS: Record<string, string> = {
   "offer.create": "Created an offer", "offer.pause": "Paused an offer", "offer.resume": "Resumed an offer",
   "expense.create": "Recorded an expense", "transfer.create": "Moved money", "journal.post": "Posted a manual journal",
   "tot.accrue": "Recorded Turnover Tax", "tot.pay": "Paid Turnover Tax", "mpesa.import": "Imported an M-Pesa statement", "books.lock": "Closed / reopened the books",
-  "settings.update": "Changed shop settings", "settings.brand": "Changed the logo or brand colour", "team.add": "Added a staff login", "team.update": "Changed a staff login", "member.set_pin": "Set their PIN",
+  "settings.update": "Changed shop settings", "settings.brand": "Changed the logo or brand colour", "settings.sms": "Changed the SMS settings", "team.add": "Added a staff login", "team.update": "Changed a staff login", "member.set_pin": "Set their PIN",
   "till.switch_user": "Switched in at the till", "opening.add": "Entered an opening balance",
 };
 

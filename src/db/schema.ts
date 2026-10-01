@@ -787,3 +787,15 @@ export const parkedSales = pgTable("parked_sales", {
   memberId: integer("member_id").notNull(),
   createdAt: createdAt(),
 }, (t) => [index("idx_parked_org_register").on(t.orgId, t.registerId)]);
+
+/** Per-shop SMS provider (Advanta). Credentials are encrypted (src/lib/secrets.ts). */
+export const smsSettings = pgTable("sms_settings", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => orgs.id),
+  provider: text("provider").notNull().default("advanta"),
+  enabled: boolean("enabled").notNull().default(false),
+  /** Shown in settings; not secret. */
+  senderId: text("sender_id"),
+  configEnc: text("config_enc"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("uq_sms_settings_org").on(t.orgId)]);

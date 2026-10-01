@@ -59,7 +59,7 @@ Barcode lookups use data from Open Beauty Facts and Open Food Facts (ODbL) and U
 
 1. **Keys in `.env.local`** (and in Vercel → Project → Settings → Environment Variables when deployed):
    `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (staff logins, photos),
-   `AT_USERNAME` / `AT_API_KEY` / `AT_SENDER_ID` (SMS), `NEXT_PUBLIC_APP_URL` (receipt and photo links), `CRON_SECRET` (daily summary).
+   `SETTINGS_ENC_KEY` (32-byte base64; encrypts each shop's Advanta SMS keys, set in Settings → SMS messages), `MAGNIFIC_API_KEY` (studio photos, poster backdrops), `NEXT_PUBLIC_APP_URL` (receipt and photo links), `CRON_SECRET` (daily summary).
 2. **Owner:** Settings → My PIN; Settings → Shop settings (owner's phone gets the 9 pm summary SMS, receipt address, KRA PIN).
 3. **Team:** Settings → Team → one login per person with the right role.
 4. **Opening balances** (Settings → Opening balances), dated the day before go-live: cash at hand, M-Pesa till balance, bank balance, unpaid supplier invoices, what credit customers owe.

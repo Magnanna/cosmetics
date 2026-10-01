@@ -1,17 +1,21 @@
 import { desc, eq } from "drizzle-orm";
-import { db, smsLog } from "@/db";
+import { db, smsLog, smsSettings } from "@/db";
 import { requirePage } from "@/lib/auth";
 import { smsConfigured } from "@/lib/sms";
 import { EmptyState, PageHeader, Pill } from "@/components/ui";
+import { SmsSettingsCard } from "./sms-settings";
 
 export const dynamic = "force-dynamic";
 
 export default async function MessagesPage() {
   const s = await requirePage("settings.edit");
+  const [cfg] = await db.select().from(smsSettings).where(eq(smsSettings.orgId, s.org.id)).limit(1);
+  const live = await smsConfigured(s.org.id);
   const rows = await db.select().from(smsLog).where(eq(smsLog.orgId, s.org.id)).orderBy(desc(smsLog.createdAt)).limit(100);
   return (
     <>
-      <PageHeader title="SMS messages" subtitle={smsConfigured() ? "Receipts and alerts sent through Africa's Talking." : "SMS isn't connected yet — messages are recorded here but not sent. Add Africa's Talking keys to switch it on."} />
+      <PageHeader title="SMS messages" subtitle={live ? `Receipts and alerts are sent through Advanta as ${cfg?.senderId}.` : "SMS isn't switched on yet — messages are recorded here but not sent."} />
+      <SmsSettingsCard enabled={!!cfg?.enabled} senderId={cfg?.senderId ?? ""} hasKeys={!!cfg?.configEnc} />
       {rows.length === 0 ? <EmptyState title="No messages yet" body="Every sale sends the customer an SMS receipt with their points." /> : (
         <div className="card overflow-x-auto">
           <table className="w-full text-[13.5px]">

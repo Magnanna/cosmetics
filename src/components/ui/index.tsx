@@ -42,7 +42,7 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
 
 export function Field({ label, hint, error, children }: { label: string; hint?: string; error?: string; children: ReactNode }) {
   return (
-    <label className="grid gap-1.5 text-[13px]">
+    <label className="grid gap-1.5 text-[13px] min-w-0">
       <span className="font-medium text-ink-600">{label}</span>
       {children}
       {error ? <span className="text-bad text-[12px]">{error}</span> : hint ? <span className="text-ink-400 text-[12px]">{hint}</span> : null}
@@ -50,7 +50,7 @@ export function Field({ label, hint, error, children }: { label: string; hint?: 
   );
 }
 
-const INPUT = "h-9 w-full rounded-lg bg-white px-3 text-[13.5px] border border-ink-200 placeholder:text-ink-400 transition-all focus:border-brand-ring focus:outline-none focus:ring-2 focus:ring-brand-tint";
+const INPUT = "h-9 w-full min-w-0 rounded-lg bg-white px-3 text-[13.5px] border border-ink-200 placeholder:text-ink-400 transition-all focus:border-brand-ring focus:outline-none focus:ring-2 focus:ring-brand-tint";
 
 export function Input({ className = "", ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={`${INPUT} ${className}`} {...props} />;

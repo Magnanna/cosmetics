@@ -92,6 +92,13 @@
       "when": 1790809995517,
       "tag": "0012_cards_studio_posters",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790832981206,
+      "tag": "0013_sms_settings",
+      "breakpoints": true
     }
   ]
 }
